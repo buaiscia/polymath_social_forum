@@ -11,7 +11,8 @@
     "server": "cross-env NODE_ENV=development tsx server/index.ts"
   },
   "dependencies": {
-    "@chakra-ui/react": "^3.24.2",
+    "@chakra-ui/react": "^2.0.0",
+    "framer-motion": "^6.0.0",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@types/cors": "^2.8.19",
@@ -20,7 +21,6 @@
     "cors": "^2.8.5",
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
-    "framer-motion": "^12.23.12",
     "mongoose": "^8.17.1",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
