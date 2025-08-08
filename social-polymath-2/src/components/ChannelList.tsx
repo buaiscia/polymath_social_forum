@@ -37,26 +37,66 @@ const sampleChannels: Channel[] = [
 const ChannelList = () => {
   const [channels] = useState<Channel[]>(sampleChannels);
 
+  const getFieldColor = (field: string) => `academic.${field}`;
+
   return (
-    <Box maxW="7xl" mx="auto" px={8} py={6}>
-      <VStack spacing={8} align="stretch">
-        <HStack spacing={4}>
-          <Text fontWeight="medium" color="gray.600">Filter by field:</Text>
-          <Button variant="solid" bg="navy.800" color="white">All Fields</Button>
-          <Button variant="academic" field="biology">Biology</Button>
-          <Button variant="academic" field="physics">Physics</Button>
-          <Button variant="academic" field="mathematics">Mathematics</Button>
-          <Button variant="academic" field="philosophy">Philosophy</Button>
-          <Button variant="academic" field="psychology">Psychology</Button>
-        </HStack>
+    <Box px={12} py={8}>
+      <VStack spacing={10} align="stretch">
+        <VStack spacing={6} align="stretch">
+          <HStack spacing={4}>
+            <Icon as={FiFilter} color="gray.600" />
+            <Text fontWeight="medium" color="gray.600">Filter by field:</Text>
+          </HStack>
+          
+          <VStack spacing={4} align="stretch">
+            <HStack spacing={4} wrap="wrap">
+              <Button 
+                bg="navy.800" 
+                color="white" 
+                size="md"
+                _hover={{ bg: 'navy.700' }}
+              >
+                All Fields
+              </Button>
+              {[
+                'biology',
+                'physics',
+                'mathematics',
+                'philosophy',
+                'psychology'
+              ].map((field) => (
+                <Button 
+                  key={field}
+                  bg={getFieldColor(field)}
+                  color="white" 
+                  size="md"
+                  _hover={{ opacity: 0.9 }}
+                >
+                  {field.charAt(0).toUpperCase() + field.slice(1)}
+                </Button>
+              ))}
+            </HStack>
 
-        <HStack spacing={4}>
-          <Button variant="academic" field="literature">Literature</Button>
-          <Button variant="academic" field="chemistry">Chemistry</Button>
-          <Button variant="academic" field="history">History</Button>
-        </HStack>
+            <HStack spacing={4} wrap="wrap">
+              {[
+                'literature',
+                'chemistry',
+                'history'
+              ].map((field) => (
+                <Button 
+                  key={field}
+                  bg={getFieldColor(field)}
+                  color="white"
+                  _hover={{ opacity: 0.9 }}
+                >
+                  {field.charAt(0).toUpperCase() + field.slice(1)}
+                </Button>
+              ))}
+            </HStack>
+          </VStack>
+        </VStack>
 
-        <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={6}>
+        <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={8}>
           {channels.map((channel) => (
             <Box
               key={channel.id}
@@ -82,10 +122,12 @@ const ChannelList = () => {
                       <Button
                         key={field}
                         size="sm"
-                        variant="academic"
-                        field={field}
+                        bg={getFieldColor(field)}
+                        color="white"
+                        borderRadius="full"
+                        _hover={{ opacity: 0.9 }}
                       >
-                        {field}
+                        {field.charAt(0).toUpperCase() + field.slice(1)}
                       </Button>
                     ))}
                   </HStack>
@@ -101,15 +143,6 @@ const ChannelList = () => {
       </VStack>
     </Box>
   );
-  //   { tag.name }
-  //                 </Tag >
-  //               ))}
-  //             </Box >
-  //           </Box >
-  //         ))}
-  //       </SimpleGrid >
-  //     </Box >
-  //   );
 };
 
 export default ChannelList;
