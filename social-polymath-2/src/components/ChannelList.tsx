@@ -1,5 +1,16 @@
 import { useState } from 'react';
-import { Box, SimpleGrid, Text, Button, Heading, HStack, VStack, Icon, Flex } from '@chakra-ui/react';
+import {
+  Box,
+  SimpleGrid,
+  Text,
+  Button,
+  Heading,
+  HStack,
+  VStack,
+  Icon,
+  Flex,
+  Input
+} from '@chakra-ui/react';
 import { FiFilter } from 'react-icons/fi';
 
 interface Channel {
@@ -41,108 +52,125 @@ const ChannelList = () => {
 
   return (
     <Box px={12} py={8}>
-      <VStack spacing={10} align="stretch">
-        <VStack spacing={6} align="stretch">
-          <HStack spacing={4}>
-            <Icon as={FiFilter} color="gray.600" />
-            <Text fontWeight="medium" color="gray.600">Filter by field:</Text>
+      {/* Header Section */}
+      <VStack spacing={8} align="stretch" mb={8}>
+        <VStack spacing={3} align="flex-start">
+          <HStack spacing={3}>
+            <Box w="32px" h="32px" borderRadius="md" bg="navy.800" />
+            <Heading size="lg" color="navy.800">Polymath Network</Heading>
           </HStack>
-          
-          <VStack spacing={4} align="stretch">
-            <HStack spacing={4} wrap="wrap">
-              <Button 
-                bg="navy.800" 
-                color="white" 
-                size="md"
-                _hover={{ bg: 'navy.700' }}
-              >
-                All Fields
-              </Button>
-              {[
-                'biology',
-                'physics',
-                'mathematics',
-                'philosophy',
-                'psychology'
-              ].map((field) => (
-                <Button 
-                  key={field}
-                  bg={getFieldColor(field)}
-                  color="white" 
-                  size="md"
-                  _hover={{ opacity: 0.9 }}
-                >
-                  {field.charAt(0).toUpperCase() + field.slice(1)}
-                </Button>
-              ))}
-            </HStack>
-
-            <HStack spacing={4} wrap="wrap">
-              {[
-                'literature',
-                'chemistry',
-                'history'
-              ].map((field) => (
-                <Button 
-                  key={field}
-                  bg={getFieldColor(field)}
-                  color="white"
-                  _hover={{ opacity: 0.9 }}
-                >
-                  {field.charAt(0).toUpperCase() + field.slice(1)}
-                </Button>
-              ))}
-            </HStack>
-          </VStack>
+          <Text color="gray.600" fontSize="lg">
+            Where interdisciplinary minds converge to explore the connections between all fields of knowledge.
+          </Text>
         </VStack>
 
-        <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={8}>
-          {channels.map((channel) => (
-            <Box
-              key={channel.id}
-              as="article"
-              bg="white"
-              borderRadius="xl"
-              boxShadow="sm"
-              p={6}
-              transition="all 0.2s"
-              _hover={{
-                transform: 'translateY(-2px)',
-                boxShadow: 'md',
-              }}
+        {/* Search Input */}
+        <Box>
+          <Input
+            placeholder="Search channels, topics, or fields..."
+            size="lg"
+            bg="white"
+            borderRadius="full"
+            borderColor="gray.200"
+            _focus={{
+              borderColor: 'navy.200',
+              boxShadow: 'none',
+            }}
+          />
+        </Box>
+
+        {/* Filter Section */}
+        <VStack spacing={4} align="stretch">
+          <HStack spacing={3}>
+            <Icon as={FiFilter} color="gray.600" />
+            <Text color="gray.600">Filter by field:</Text>
+            <Button
+              bg="navy.800"
+              color="white"
+              size="sm"
+              borderRadius="full"
+              px={6}
+              _hover={{ bg: 'navy.700' }}
             >
-              <VStack align="stretch" h="full" spacing={4}>
-                <Heading size="md" color="navy.800">{channel.title}</Heading>
-                <Text color="gray.600" flex="1">
-                  {channel.description}
-                </Text>
-                <Flex justify="space-between" align="center">
-                  <HStack spacing={2}>
-                    {channel.fields.map((field) => (
-                      <Button
-                        key={field}
-                        size="sm"
-                        bg={getFieldColor(field)}
-                        color="white"
-                        borderRadius="full"
-                        _hover={{ opacity: 0.9 }}
-                      >
-                        {field.charAt(0).toUpperCase() + field.slice(1)}
-                      </Button>
-                    ))}
-                  </HStack>
-                  <HStack spacing={1}>
-                    <Text fontWeight="medium">{channel.memberCount}</Text>
-                    <Text color="gray.500">members</Text>
-                  </HStack>
-                </Flex>
-              </VStack>
-            </Box>
-          ))}
-        </SimpleGrid>
+              All Fields
+            </Button>
+          </HStack>
+
+          <HStack spacing={2} wrap="wrap">
+            {[
+              'biology',
+              'physics',
+              'mathematics',
+              'philosophy',
+              'psychology',
+              'literature',
+              'chemistry',
+              'history'
+            ].map((field) => (
+              <Button
+                key={field}
+                bg={getFieldColor(field)}
+                color="white"
+                size="sm"
+                borderRadius="full"
+                px={4}
+                _hover={{ opacity: 0.9 }}
+              >
+                {field.charAt(0).toUpperCase() + field.slice(1)}
+              </Button>
+            ))}
+          </HStack>
+        </VStack>
       </VStack>
+
+      {/* Channel Grid */}
+      <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={8}>
+        {channels.map((channel) => (
+          <Box
+            key={channel.id}
+            as="article"
+            bg="white"
+            borderRadius="xl"
+            boxShadow="sm"
+            p={6}
+            transition="all 0.2s"
+            _hover={{
+              transform: 'translateY(-2px)',
+              boxShadow: 'md',
+            }}
+          >
+            <VStack align="stretch" h="full" spacing={4}>
+              <Heading size="md" color="navy.800" lineHeight="1.3">{channel.title}</Heading>
+              <Text color="gray.600" flex="1" fontSize="sm" lineHeight="1.6">
+                {channel.description}
+              </Text>
+              <Flex justify="space-between" align="center">
+                <HStack spacing={1.5}>
+                  {channel.fields.map((field) => (
+                    <Button
+                      key={field}
+                      size="xs"
+                      bg={getFieldColor(field)}
+                      color="white"
+                      borderRadius="full"
+                      fontSize="xs"
+                      py={1}
+                      px={3}
+                      _hover={{ opacity: 0.9 }}
+                    >
+                      {field.charAt(0).toUpperCase() + field.slice(1)}
+                    </Button>
+                  ))}
+                </HStack>
+                <HStack spacing={1} fontSize="sm">
+                  <Text fontWeight="medium">{channel.memberCount}</Text>
+                  <Text color="gray.500">members</Text>
+                </HStack>
+              </Flex>
+            </VStack>
+          </Box>
+        ))}
+      </SimpleGrid>
     </Box>
   );
-};
-
-export default ChannelList;
+}; export default ChannelList;

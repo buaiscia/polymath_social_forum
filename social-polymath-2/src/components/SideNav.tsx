@@ -4,7 +4,7 @@ import { FiSearch, FiPlus, FiUser } from 'react-icons/fi';
 
 const SideNav = () => {
   return (
-    <Box w="280px" p={6} bg="white" borderLeft="1px" borderColor="gray.200" h="calc(100vh - 76px)" position="fixed" right={0} top="76px">
+    <Box w="280px" p={6} bg="white" borderRight="1px" borderColor="gray.200" h="calc(100vh - 76px)" position="fixed" left={0} top="76px">
       <VStack spacing={6} align="stretch">
         <Box>
           <Text color="gray.600" fontWeight="medium" mb={4}>

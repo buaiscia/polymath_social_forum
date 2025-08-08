@@ -8,15 +8,15 @@ import CreateChannel from './CreateChannel';
 const Layout = () => {
   return (
     <Box minH="100vh" bg="gray.50">
-      <Navbar />
+      {/* <Navbar /> */}
       <Flex>
-        <Box as="main" flex="1" pr="280px">
+        <SideNav />
+        <Box as="main" flex="1" pl="280px">
           <Routes>
             <Route path="/" element={<ChannelList />} />
             <Route path="/create" element={<CreateChannel />} />
           </Routes>
         </Box>
-        <SideNav />
       </Flex>
     </Box>
   );
