@@ -28,13 +28,51 @@ const CreateChannel = () => {
   const [description, setDescription] = useState('');
   const [tagInput, setTagInput] = useState('');
   const [tags, setTags] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
   const toast = useToast();
   const navigate = useNavigate();
+
+  // Predefined academic fields
+  const predefinedFields = [
+    'Biology', 'Physics', 'Mathematics', 'Philosophy', 'Psychology',
+    'Literature', 'Chemistry', 'History', 'Computer Science', 'Sociology',
+    'Economics', 'Political Science', 'Anthropology', 'Geography', 'Art',
+    'Music', 'Engineering', 'Medicine', 'Law', 'Linguistics', 'Astronomy',
+    'Geology', 'Environmental Science', 'Statistics', 'Architecture'
+  ];
+
+  const handleTagInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setTagInput(value);
+
+    // Show suggestions after 3 characters
+    if (value.length >= 3) {
+      const matches = predefinedFields.filter(field =>
+        field.toLowerCase().startsWith(value.toLowerCase())
+      );
+      setSuggestions(matches.slice(0, 5)); // Show max 5 suggestions
+      setShowSuggestions(matches.length > 0);
+    } else {
+      setShowSuggestions(false);
+    }
+  };
+
+  const handleSuggestionClick = (suggestion: string) => {
+    // Add the tag if it doesn't already exist
+    if (!tags.includes(suggestion)) {
+      setTags([...tags, suggestion]);
+    }
+    // Clear input and hide suggestions
+    setTagInput('');
+    setShowSuggestions(false);
+  };
 
   const handleAddTag = () => {
     if (tagInput.trim() && !tags.includes(tagInput.trim())) {
       setTags([...tags, tagInput.trim()]);
       setTagInput('');
+      setShowSuggestions(false);
     }
   };
 
@@ -167,31 +205,75 @@ const CreateChannel = () => {
               />
             </FormControl>
 
-            <FormControl>
+            <FormControl position="relative">
               <FormLabel color="gray.700" fontWeight="medium">
                 Academic Fields
               </FormLabel>
-              <Input
-                value={tagInput}
-                onChange={(e) => setTagInput(e.target.value)}
-                placeholder="Type a field (e.g., Biology, Philosophy, Mathematics) and press Enter"
-                size="lg"
-                bg="yellow.100"
-                border="none"
-                borderRadius="md"
-                _placeholder={{ color: 'gray.600' }}
-                _focus={{
-                  bg: 'yellow.50',
-                  outline: 'none',
-                  boxShadow: 'none',
-                }}
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    handleAddTag();
-                  }
-                }}
-              />
+              <Box position="relative">
+                <Input
+                  value={tagInput}
+                  onChange={handleTagInputChange}
+                  placeholder="Type a field (e.g., Biology, Philosophy, Mathematics) and press Enter"
+                  size="lg"
+                  bg="yellow.100"
+                  border="none"
+                  borderRadius="md"
+                  _placeholder={{ color: 'gray.600' }}
+                  _focus={{
+                    bg: 'yellow.50',
+                    outline: 'none',
+                    boxShadow: 'none',
+                  }}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddTag();
+                    }
+                  }}
+                />
+
+                {/* Suggestions Dropdown */}
+                {showSuggestions && suggestions.length > 0 && (
+                  <Box
+                    position="absolute"
+                    top="100%"
+                    left={0}
+                    right={0}
+                    bg="white"
+                    border="1px solid"
+                    borderColor="gray.200"
+                    borderRadius="md"
+                    boxShadow="lg"
+                    zIndex={10}
+                    mt={1}
+                  >
+                    {suggestions.map((suggestion, index) => (
+                      <Box
+                        key={index}
+                        p={3}
+                        cursor="pointer"
+                        _hover={{ bg: 'teal.50' }}
+                        borderBottom={index < suggestions.length - 1 ? "1px solid" : "none"}
+                        borderBottomColor="gray.100"
+                        onClick={() => handleSuggestionClick(suggestion)}
+                      >
+                        <HStack spacing={3} justify="space-between">
+                          <HStack spacing={2}>
+                            <Box w={2} h={2} bg="teal.400" borderRadius="full" />
+                            <Text fontSize="sm" color="teal.600" fontWeight="medium">
+                              {suggestion}
+                            </Text>
+                          </HStack>
+                          <Text fontSize="xs" color="gray.500">
+                            Use existing field
+                          </Text>
+                        </HStack>
+                      </Box>
+                    ))}
+                  </Box>
+                )}
+              </Box>
+
               {tags.length > 0 && (
                 <HStack spacing={2} wrap="wrap" mt={3}>
                   {tags.map((tag, index) => (
@@ -200,7 +282,7 @@ const CreateChannel = () => {
                       size="md"
                       borderRadius="full"
                       variant="solid"
-                      bg="navy.600"
+                      bg="teal.500"
                       color="white"
                     >
                       <TagLabel>{tag}</TagLabel>
