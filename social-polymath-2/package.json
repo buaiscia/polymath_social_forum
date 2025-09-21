@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "server": "cross-env NODE_ENV=development tsx server/index.ts"
+    "server": "cross-env NODE_ENV=development tsx server/index.ts",
+    "start-dev": "powershell -ExecutionPolicy Bypass -File ./start-dev.ps1"
   },
   "dependencies": {
     "@chakra-ui/icons": "^2.2.4",
