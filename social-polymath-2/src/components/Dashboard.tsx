@@ -18,11 +18,17 @@ import { FiFilter } from 'react-icons/fi';
 import axios from 'axios';
 import ChannelCard from './ChannelCard';
 
+interface Tag {
+  _id: string;
+  name: string;
+  color: string;
+}
+
 interface Channel {
   id: string;
   title: string;
   description: string;
-  tags: string[]; // Changed from 'fields' to 'tags' to match backend
+  tags: Tag[]; // Changed from string[] to Tag[]
   memberCount?: number; // Made optional since backend might not have this
 }
 
