@@ -160,7 +160,7 @@ Response:
 **Get All Tags**
 
 ```http
-GET /api/channels/tags
+GET /api/tags
 ```
 
 Response:

@@ -34,6 +34,7 @@ interface Channel {
 
 const Dashboard = () => {
   const [channels, setChannels] = useState<Channel[]>([]);
+  const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -54,6 +55,20 @@ const Dashboard = () => {
     };
 
     fetchChannels();
+  }, []);
+
+  // Fetch tags from backend
+  useEffect(() => {
+    const fetchTags = async () => {
+      try {
+        const response = await axios.get('http://localhost:5000/api/tags');
+        setTags(response.data);
+      } catch (err) {
+        console.error('Failed to fetch tags:', err);
+      }
+    };
+
+    fetchTags();
   }, []);
 
   const getFieldColor = (field: string) => `academic.${field}`;
@@ -105,26 +120,17 @@ const Dashboard = () => {
           </HStack>
 
           <HStack spacing={2} wrap="wrap">
-            {[
-              'biology',
-              'physics',
-              'mathematics',
-              'philosophy',
-              'psychology',
-              'literature',
-              'chemistry',
-              'history'
-            ].map((field) => (
+            {tags.map((tag) => (
               <Button
-                key={field}
-                bg={getFieldColor(field)}
+                key={tag._id}
+                bg={tag.color}
                 color="white"
                 size="sm"
                 borderRadius="full"
                 px={4}
                 _hover={{ opacity: 0.9 }}
               >
-                {field.charAt(0).toUpperCase() + field.slice(1)}
+                {tag.name.charAt(0).toUpperCase() + tag.name.slice(1)}
               </Button>
             ))}
           </HStack>

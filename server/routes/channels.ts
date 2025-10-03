@@ -8,7 +8,7 @@ router.get('/', async (req, res) => {
   try {
     const channels = await Channel.find().populate('tags');
     res.json(channels);
-  } catch (error) {
+  } catch {
     res.status(500).json({ message: 'Error fetching channels' });
   }
 });
@@ -51,18 +51,8 @@ router.post('/', async (req, res) => {
 
     const populatedChannel = await Channel.findById(channel._id).populate('tags');
     res.status(201).json(populatedChannel);
-  } catch (error) {
+  } catch {
     res.status(500).json({ message: 'Error creating channel' });
-  }
-});
-
-// Get all tags
-router.get('/tags', async (req, res) => {
-  try {
-    const tags = await Tag.find();
-    res.json(tags);
-  } catch (error) {
-    res.status(500).json({ message: 'Error fetching tags' });
   }
 });
 
