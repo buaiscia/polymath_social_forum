@@ -28,19 +28,19 @@ describe('CreateChannel', () => {
 
   it('renders the form title', () => {
     renderWithRouter(<CreateChannel />);
-    
+
     expect(screen.getByText('Launch Your Channel')).toBeInTheDocument();
   });
 
   it('renders back to channels link', () => {
     renderWithRouter(<CreateChannel />);
-    
+
     expect(screen.getByText('Back to Channels')).toBeInTheDocument();
   });
 
   it('renders all form fields', () => {
     renderWithRouter(<CreateChannel />);
-    
+
     expect(screen.getByLabelText(/Channel Title/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Description/i)).toBeInTheDocument();
     expect(screen.getByPlaceholderText(/Type a field/i)).toBeInTheDocument();

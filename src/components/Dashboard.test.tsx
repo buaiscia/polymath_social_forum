@@ -48,14 +48,14 @@ describe('Dashboard', () => {
   it('renders the main heading', () => {
     vi.mocked(axios.get).mockResolvedValue({ data: [] });
     renderWithRouter(<Dashboard />);
-    
+
     expect(screen.getByText('Polymath Network')).toBeInTheDocument();
   });
 
   it('renders the tagline', () => {
     vi.mocked(axios.get).mockResolvedValue({ data: [] });
     renderWithRouter(<Dashboard />);
-    
+
     expect(
       screen.getByText(/Where interdisciplinary minds converge/)
     ).toBeInTheDocument();
@@ -64,7 +64,7 @@ describe('Dashboard', () => {
   it('renders search input', () => {
     vi.mocked(axios.get).mockResolvedValue({ data: [] });
     renderWithRouter(<Dashboard />);
-    
+
     expect(
       screen.getByPlaceholderText(/Search channels, topics, or fields/i)
     ).toBeInTheDocument();
@@ -73,7 +73,7 @@ describe('Dashboard', () => {
   it('shows loading state initially', () => {
     vi.mocked(axios.get).mockImplementation(() => new Promise(() => {}));
     renderWithRouter(<Dashboard />);
-    
+
     expect(screen.getByText('Loading channels...')).toBeInTheDocument();
   });
 
@@ -86,7 +86,7 @@ describe('Dashboard', () => {
     });
 
     renderWithRouter(<Dashboard />);
-    
+
     await waitFor(() => {
       expect(screen.getByText('Quantum Physics Discussion')).toBeInTheDocument();
       expect(screen.getByText('Philosophy of Mind')).toBeInTheDocument();
@@ -102,13 +102,13 @@ describe('Dashboard', () => {
     });
 
     renderWithRouter(<Dashboard />);
-    
+
     await waitFor(() => {
       // Use getAllByText since tags appear both in filter and channel cards
       const physicsElements = screen.getAllByText('Physics');
       const mathematicsElements = screen.getAllByText('Mathematics');
       const philosophyElements = screen.getAllByText('Philosophy');
-      
+
       // Should have at least one of each
       expect(physicsElements.length).toBeGreaterThan(0);
       expect(mathematicsElements.length).toBeGreaterThan(0);
@@ -118,9 +118,9 @@ describe('Dashboard', () => {
 
   it('shows error message when fetching channels fails', async () => {
     vi.mocked(axios.get).mockRejectedValue(new Error('Network error'));
-    
+
     renderWithRouter(<Dashboard />);
-    
+
     await waitFor(() => {
       expect(
         screen.getByText(/Failed to load channels/i)
@@ -131,15 +131,15 @@ describe('Dashboard', () => {
   it('renders All Fields filter button', () => {
     vi.mocked(axios.get).mockResolvedValue({ data: [] });
     renderWithRouter(<Dashboard />);
-    
+
     expect(screen.getByText('All Fields')).toBeInTheDocument();
   });
 
   it('calls the correct API endpoints', async () => {
     vi.mocked(axios.get).mockResolvedValue({ data: [] });
-    
+
     renderWithRouter(<Dashboard />);
-    
+
     await waitFor(() => {
       expect(axios.get).toHaveBeenCalledWith('http://localhost:5000/api/channels');
       expect(axios.get).toHaveBeenCalledWith('http://localhost:5000/api/tags');
@@ -155,7 +155,7 @@ describe('Dashboard', () => {
     });
 
     renderWithRouter(<Dashboard />);
-    
+
     await waitFor(() => {
       expect(
         screen.getByText('A forum for discussing quantum mechanics')

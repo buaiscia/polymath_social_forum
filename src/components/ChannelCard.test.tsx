@@ -78,7 +78,7 @@ describe('ChannelCard', () => {
 
   it('renders default member count of 1 when not provided', () => {
     const channelWithoutMembers = { ...mockChannel, memberCount: undefined };
-    
+
     render(
       <ChannelCard
         channel={channelWithoutMembers}
@@ -104,7 +104,7 @@ describe('ChannelCard', () => {
 
   it('does not render tags section when tags array is empty', () => {
     const channelWithoutTags = { ...mockChannel, tags: [] };
-    
+
     render(
       <ChannelCard
         channel={channelWithoutTags}
