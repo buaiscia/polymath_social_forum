@@ -35,15 +35,22 @@ interface Channel {
 const Dashboard = () => {
   const [channels, setChannels] = useState<Channel[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch channels from backend
+  // Fetch channels from backend with optional tag filtering
   useEffect(() => {
     const fetchChannels = async () => {
       try {
         setLoading(true);
-        const response = await axios.get('http://localhost:5000/api/channels');
+
+        // Build query string with selected tags
+        const queryParams = selectedTags.length > 0
+          ? `?tags=${selectedTags.join(',')}`
+          : '';
+
+        const response = await axios.get(`http://localhost:5000/api/channels${queryParams}`);
         setChannels(response.data);
         setError(null);
       } catch (err) {
@@ -55,7 +62,7 @@ const Dashboard = () => {
     };
 
     fetchChannels();
-  }, []);
+  }, [selectedTags]); // Re-fetch when selectedTags changes
 
   // Fetch tags from backend
   useEffect(() => {
@@ -72,6 +79,23 @@ const Dashboard = () => {
   }, []);
 
   const getFieldColor = (field: string) => `academic.${field}`;
+
+  // Toggle tag selection
+  const toggleTag = (tagName: string) => {
+    setSelectedTags(prev => {
+      const isCurrentlySelected = prev.some(t => t.toLowerCase() === tagName.toLowerCase());
+      if (isCurrentlySelected) {
+        return prev.filter(t => t.toLowerCase() !== tagName.toLowerCase());
+      } else {
+        return [...prev, tagName];
+      }
+    });
+  };
+
+  // Clear all filters
+  const clearFilters = () => {
+    setSelectedTags([]);
+  };
 
   return (
     <Box px={12} py={8}>
@@ -108,31 +132,47 @@ const Dashboard = () => {
             <Icon as={FiFilter} color="gray.600" />
             <Text color="gray.600">Filter by field:</Text>
             <Button
-              bg="navy.800"
-              color="white"
+              bg={selectedTags.length === 0 ? 'navy.800' : 'gray.300'}
+              color={selectedTags.length === 0 ? 'white' : 'gray.600'}
               size="sm"
               borderRadius="full"
               px={6}
-              _hover={{ bg: 'navy.700' }}
+              _hover={{ bg: selectedTags.length === 0 ? 'navy.700' : 'gray.400' }}
+              onClick={clearFilters}
             >
-              All Fields
+              All Fields {selectedTags.length > 0 && `(${channels.length})`}
             </Button>
+            {selectedTags.length > 0 && (
+              <Text color="gray.500" fontSize="sm">
+                Filtering by: {selectedTags.join(', ')}
+              </Text>
+            )}
           </HStack>
 
           <HStack spacing={2} wrap="wrap">
-            {tags.map((tag) => (
-              <Button
-                key={tag._id}
-                bg={tag.color}
-                color="white"
-                size="sm"
-                borderRadius="full"
-                px={4}
-                _hover={{ opacity: 0.9 }}
-              >
-                {tag.name.charAt(0).toUpperCase() + tag.name.slice(1)}
-              </Button>
-            ))}
+            {tags.map((tag) => {
+              const isSelected = selectedTags.some(t => t.toLowerCase() === tag.name.toLowerCase());
+              return (
+                <Button
+                  key={tag._id}
+                  bg={tag.color}
+                  color="white"
+                  size="sm"
+                  borderRadius="full"
+                  px={4}
+                  _hover={{ opacity: 0.9, transform: 'scale(1.05)' }}
+                  onClick={() => toggleTag(tag.name)}
+                  border="3px solid"
+                  borderColor={isSelected ? 'gray.800' : 'transparent'}
+                  cursor="pointer"
+                  opacity={isSelected ? 1 : 0.75}
+                  boxShadow={isSelected ? 'lg' : 'md'}
+                  transition="all 0.2s"
+                >
+                  {tag.name.charAt(0).toUpperCase() + tag.name.slice(1)}
+                </Button>
+              );
+            })}
           </HStack>
         </VStack>
       </VStack>
@@ -164,4 +204,6 @@ const Dashboard = () => {
       </SimpleGrid>
     </Box>
   );
-}; export default Dashboard;
+};
+
+export default Dashboard;
