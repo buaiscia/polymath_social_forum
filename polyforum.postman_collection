@@ -1,0 +1,266 @@
+{
+	"info": {
+		"_postman_id": "8008aa52-f5a8-4a2d-9f38-5f7ccede9613",
+		"name": "Polymath Forum",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "10563697",
+		"_collection_link": "https://orange-firefly-9791-1.postman.co/workspace/Team-Workspace~efc5a6e2-9b1f-44d7-8e94-7a7f58639ee3/collection/10563697-8008aa52-f5a8-4a2d-9f38-5f7ccede9613?action=share&source=collection_link&creator=10563697"
+	},
+	"item": [
+		{
+			"name": "Channels",
+			"item": [
+				{
+					"name": "Get Channels",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:5000/api/channels",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "5000",
+							"path": [
+								"api",
+								"channels"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Post Channel",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"const jsonData = pm.response.json();",
+									"",
+									"pm.test(\"Response has expected channel title\", function () {",
+									"    pm.expect(jsonData.title).to.eql(\"Quantum Biology Frontiers\");",
+									"});",
+									"",
+									"pm.test(\"Response has expected channel description\", function () {",
+									"    pm.expect(jsonData.description).to.eql(\"Exploring how quantum mechanics principles apply to biological systems and processes\");",
+									"});",
+									"",
+									"pm.test(\"Response has expected tags array\", function () {",
+									"    pm.expect(jsonData.tags).to.be.an(\"array\");",
+									"    pm.expect(jsonData.tags.length).to.eql(3);",
+									"    jsonData.tags.forEach(tag => {",
+									"        pm.expect(tag).to.have.all.keys(\"_id\", \"name\", \"color\", \"__v\");",
+									"    });",
+									"});",
+									"",
+									"pm.test(\"Response has expected structure with _id, createdAt, and __v fields\", function () {",
+									"    pm.expect(jsonData).to.have.property(\"_id\");",
+									"    pm.expect(jsonData).to.have.property(\"createdAt\");",
+									"    pm.expect(jsonData).to.have.property(\"__v\");",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"title\": \"Quantum Biology Frontiers\",\r\n  \"description\": \"Exploring how quantum mechanics principles apply to biological systems and processes\",\r\n  \"tags\": [\"biology\", \"physics\", \"chemistry\"]\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:5000/api/channels",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "5000",
+							"path": [
+								"api",
+								"channels"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Tags",
+			"item": [
+				{
+					"name": "Get Tags",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text",
+								"disabled": true
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "http://localhost:5000/api/tags",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "5000",
+							"path": [
+								"api",
+								"tags"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Tag",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text",
+								"disabled": true
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "http://localhost:5000/api/tags/:id",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "5000",
+							"path": [
+								"api",
+								"tags",
+								":id"
+							],
+							"query": [
+								{
+									"key": "id",
+									"value": "",
+									"disabled": true
+								}
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "68e02c1c8a244560386c1be1"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Messages",
+			"item": [
+				{
+					"name": "Get Messages",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:5000/api/messages",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "5000",
+							"path": [
+								"api",
+								"messages"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Post Message",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"channelId\": \"6893c531d4cfb9f628d82a8f\",\r\n  \"author\": \"guest\",\r\n  \"content\": \"test message\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:5000/api/messages",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "5000",
+							"path": [
+								"api",
+								"messages"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}
