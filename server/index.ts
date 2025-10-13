@@ -4,6 +4,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { channelRouter } from './routes/channels';
 import { tagRouter } from './routes/tags';
+import { messageRouter } from './routes/messages';
 
 dotenv.config();
 
@@ -21,6 +22,7 @@ mongoose.connect(process.env.MONGODB_URI as string)
 // Routes
 app.use('/api/channels', channelRouter);
 app.use('/api/tags', tagRouter);
+app.use('/api/messages', messageRouter);
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);

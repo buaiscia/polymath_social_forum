@@ -1,5 +1,7 @@
 import express from 'express';
+import mongoose from 'mongoose';
 import { Channel, Tag } from '../models/Channel';
+import { Message } from '../models/Message';
 
 const router = express.Router();
 
@@ -35,11 +37,42 @@ router.get('/', async (req, res) => {
   }
 });
 
+// Get a single channel by ID
+router.get('/:id', async (req, res) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: 'Invalid channel ID' });
+    }
+
+    const channel = await Channel.findById(req.params.id).populate('tags');
+
+    if (!channel) {
+      return res.status(404).json({ message: 'Channel not found' });
+    }
+
+    res.json(channel);
+  } catch (error) {
+    console.error('Error fetching channel:', error);
+    res.status(500).json({ message: 'Error fetching channel' });
+  }
+});
+
 
 // Create a new channel
 router.post('/', async (req, res) => {
   try {
     const { title, description, tags } = req.body;
+
+    // Validate required fields
+    if (!title || typeof title !== 'string' || title.trim().length === 0) {
+      return res.status(400).json({ message: 'Channel title is required' });
+    }
+    if (!description || typeof description !== 'string' || description.trim().length === 0) {
+      return res.status(400).json({ message: 'Channel description is required' });
+    }
+    if (!Array.isArray(tags) || tags.length === 0) {
+      return res.status(400).json({ message: 'At least one tag is required' });
+    }
 
     // Academic field colors to match frontend theme
     const academicColors: { [key: string]: string } = {
@@ -69,8 +102,8 @@ router.post('/', async (req, res) => {
     }
 
     const channel = await Channel.create({
-      title,
-      description,
+      title: title.trim(),
+      description: description.trim(),
       tags: tagIds,
     });
 
@@ -79,6 +112,62 @@ router.post('/', async (req, res) => {
   } catch (error) {
     console.error('Error creating channel:', error);
     res.status(500).json({ message: 'Error creating channel' });
+  }
+});
+
+// Get messages for a specific channel
+router.get('/:id/messages', async (req, res) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: 'Invalid channel ID' });
+    }
+
+    const channelExists = await Channel.exists({ _id: req.params.id });
+    if (!channelExists) {
+      return res.status(404).json({ message: 'Channel not found' });
+    }
+
+    const messages = await Message.find({ channel: req.params.id })
+      .sort({ createdAt: 1 });
+
+    res.json(messages);
+  } catch (error) {
+    console.error('Error fetching messages:', error);
+    res.status(500).json({ message: 'Error fetching messages' });
+  }
+});
+
+// Post a new message to a specific channel
+router.post('/:id/messages', async (req, res) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: 'Invalid channel ID' });
+    }
+
+    const { author, content } = req.body;
+
+    if (!content || typeof content !== 'string' || content.trim().length === 0) {
+      return res.status(400).json({ message: 'Message content is required' });
+    }
+
+    const channel = await Channel.findById(req.params.id);
+    if (!channel) {
+      return res.status(404).json({ message: 'Channel not found' });
+    }
+
+    const authorName = typeof author === 'string' && author.trim().length > 0
+      ? author.trim()
+      : 'Anonymous';
+    const message = await Message.create({
+      channel: channel._id,
+      author: authorName,
+      content: content.trim(),
+    });
+
+    res.status(201).json(message);
+  } catch (error) {
+    console.error('Error creating message:', error);
+    res.status(500).json({ message: 'Error creating message' });
   }
 });
 
