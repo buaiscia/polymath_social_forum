@@ -14,11 +14,9 @@ router.get('/', async (req, res) => {
     if (tags && typeof tags === 'string') {
       const tagNames = tags.split(',').map(tag => tag.trim());
 
-      // Find tag IDs that match the provided tag names (case-insensitive)
+      // Find tag IDs that match the provided tag names (all lowercase, exact match)
       const matchingTags = await Tag.find({
-        name: {
-          $in: tagNames.map(name => new RegExp(`^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i'))
-        }
+        name: { $in: tagNames.map(name => name.toLowerCase()) }
       });
 
       const tagIds = matchingTags.map(tag => tag._id);
@@ -55,15 +53,17 @@ router.post('/', async (req, res) => {
       history: '#ef4444',
     };
 
-    // Handle tags
+    // Handle tags (always store and match in lowercase)
     const tagIds = [];
     for (const tagName of tags) {
-      // Try to find existing tag or create new one
-      let tag = await Tag.findOne({ name: tagName });
+      const lowerTagName = tagName.toLowerCase();
+      // Try to find existing tag (always lowercase)
+      let tag = await Tag.findOne({ name: lowerTagName });
       if (!tag) {
         // Use academic color if available, otherwise generate random color
-        const color = academicColors[tagName.toLowerCase()] || '#' + Math.floor(Math.random() * 16777215).toString(16);
-        tag = await Tag.create({ name: tagName, color });
+        const randomHex = Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
+        const color = academicColors[lowerTagName] || `#${randomHex}`;
+        tag = await Tag.create({ name: lowerTagName, color });
       }
       tagIds.push(tag._id);
     }
