@@ -144,7 +144,7 @@ router.post('/:id/messages', async (req, res) => {
       return res.status(400).json({ message: 'Invalid channel ID' });
     }
 
-    const { author, content } = req.body;
+    const { author, content, parentMessageId } = req.body;
 
     if (!content || typeof content !== 'string' || content.trim().length === 0) {
       return res.status(400).json({ message: 'Message content is required' });
@@ -155,11 +155,32 @@ router.post('/:id/messages', async (req, res) => {
       return res.status(404).json({ message: 'Channel not found' });
     }
 
+    let parentMessage = null;
+    if (parentMessageId !== undefined) {
+      if (parentMessageId === null) {
+        parentMessage = null;
+      } else {
+        if (typeof parentMessageId !== 'string' || !mongoose.Types.ObjectId.isValid(parentMessageId)) {
+          return res.status(400).json({ message: 'Invalid parent message ID' });
+        }
+
+        parentMessage = await Message.findById(parentMessageId);
+        if (!parentMessage) {
+          return res.status(404).json({ message: 'Parent message not found' });
+        }
+
+        if (parentMessage.channel.toString() !== channel._id.toString()) {
+          return res.status(400).json({ message: 'Parent message belongs to a different channel' });
+        }
+      }
+    }
+
     const authorName = typeof author === 'string' && author.trim().length > 0
       ? author.trim()
       : 'Anonymous';
     const message = await Message.create({
       channel: channel._id,
+      parentMessage: parentMessage ? parentMessage._id : undefined,
       author: authorName,
       content: content.trim(),
     });

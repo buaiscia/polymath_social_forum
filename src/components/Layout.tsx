@@ -1,9 +1,9 @@
 import { Box, Flex } from '@chakra-ui/react';
 import { Routes, Route } from 'react-router-dom';
-import Navbar from './Navbar';
 import SideNav from './SideNav';
 import Dashboard from './Dashboard';
 import CreateChannel from './CreateChannel';
+import Channel from './Channel';
 
 const Layout = () => {
   return (
@@ -15,6 +15,7 @@ const Layout = () => {
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/create" element={<CreateChannel />} />
+            <Route path="/channels/:id" element={<Channel />} />
           </Routes>
         </Box>
       </Flex>

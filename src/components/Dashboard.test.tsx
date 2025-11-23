@@ -1,16 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '../test/utils';
-import { BrowserRouter } from 'react-router-dom';
+import { renderWithRouter, screen, waitFor } from '../test/utils';
 import Dashboard from './Dashboard';
 import axios from 'axios';
 
 // Mock axios
 vi.mock('axios');
-
-// Helper to render with Router
-const renderWithRouter = (component: React.ReactElement) => {
-  return render(<BrowserRouter>{component}</BrowserRouter>);
-};
 
 describe('Dashboard', () => {
   const mockChannels = [

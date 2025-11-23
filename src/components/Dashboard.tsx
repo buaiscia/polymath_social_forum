@@ -25,7 +25,8 @@ interface Tag {
 }
 
 interface Channel {
-  id: string;
+  _id?: string;
+  id?: string;
   title: string;
   description: string;
   tags: Tag[]; // Changed from string[] to Tag[]
@@ -195,9 +196,8 @@ const Dashboard = () => {
       <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={8}>
         {channels.map((channel, index) => (
           <ChannelCard
-            key={channel.id || `channel-${index}`}
+            key={channel._id || channel.id || `channel-${index}`}
             channel={channel}
-            index={index}
             getFieldColor={getFieldColor}
           />
         ))}

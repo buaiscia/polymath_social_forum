@@ -1,12 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { render, screen } from '../test/utils';
-import { BrowserRouter } from 'react-router-dom';
+import { renderWithRouter, screen } from '../test/utils';
 import Navbar from './Navbar';
-
-// Helper to render with Router
-const renderWithRouter = (component: React.ReactElement) => {
-  return render(<BrowserRouter>{component}</BrowserRouter>);
-};
 
 describe('Navbar', () => {
   it('renders the Polymath branding', () => {
