@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { Route, Routes } from 'react-router-dom';
 import axios from 'axios';
 import { renderWithRouter } from '../test/utils';
@@ -13,6 +13,7 @@ interface MockMessage {
   author?: string;
   content: string;
   createdAt: string;
+  parentMessage?: string | null;
 }
 
 const mockChannel = {
@@ -163,6 +164,87 @@ describe('Channel messaging flow', () => {
       expect(
         screen.getByText('Unable to send your message right now. Please try again.'),
       ).toBeInTheDocument();
+    });
+  });
+
+  it('opens the inline reply form and posts a threaded reply', async () => {
+    mockGet([initialMessage]);
+    const replyResponse: MockMessage = {
+      _id: 'msg-reply-1',
+      channel: mockChannel._id,
+      author: 'Grace',
+      content: 'Responding in-thread.',
+      createdAt: '2025-08-08T22:10:00.000Z',
+      parentMessage: initialMessage._id,
+    };
+
+    vi.mocked(axios.post).mockResolvedValue({ data: replyResponse });
+
+    renderChannel();
+
+    await waitFor(() => {
+      expect(screen.getByText('Initial statement.')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getAllByRole('button', { name: /^reply$/i })[0]);
+
+    const replyTextarea = screen.getByPlaceholderText(/share your reply/i);
+    const replyForm = replyTextarea.closest('form');
+    expect(replyForm).not.toBeNull();
+
+    if (!replyForm) return;
+
+    fireEvent.change(within(replyForm).getByPlaceholderText(/your name/i), {
+      target: { value: 'Grace' },
+    });
+    fireEvent.change(replyTextarea, { target: { value: 'Responding in-thread.' } });
+
+    fireEvent.click(within(replyForm).getByRole('button', { name: /send reply/i }));
+
+    await waitFor(() => {
+      expect(axios.post).toHaveBeenCalledWith(
+        'http://localhost:5000/api/messages',
+        {
+          channelId: mockChannel._id,
+          content: 'Responding in-thread.',
+          author: 'Grace',
+          parentMessageId: initialMessage._id,
+        },
+      );
+      expect(screen.getByText('Responding in-thread.')).toBeInTheDocument();
+      expect(screen.queryByPlaceholderText(/share your reply/i)).not.toBeInTheDocument();
+    });
+  });
+
+  it('collapses and expands reply threads while showing counts', async () => {
+    const threadedChild: MockMessage = {
+      _id: 'msg-child-1',
+      channel: mockChannel._id,
+      content: 'Nested perspective.',
+      createdAt: '2025-08-08T23:00:00.000Z',
+      parentMessage: initialMessage._id,
+    };
+
+    mockGet([initialMessage, threadedChild]);
+    vi.mocked(axios.post).mockResolvedValue({ data: null });
+
+    renderChannel();
+
+    await waitFor(() => {
+      expect(screen.getByText('Nested perspective.')).toBeInTheDocument();
+      expect(screen.getByText(/1 reply/i)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /hide replies \(1\)/i }));
+
+    await waitFor(() => {
+      expect(screen.queryByText('Nested perspective.')).not.toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /show replies \(1\)/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Nested perspective.')).toBeInTheDocument();
     });
   });
 });
