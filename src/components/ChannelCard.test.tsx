@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { render, screen } from '../test/utils';
+import { renderWithRouter, screen } from '../test/utils';
 import ChannelCard from './ChannelCard';
 
 describe('ChannelCard', () => {
@@ -25,10 +25,9 @@ describe('ChannelCard', () => {
   };
 
   it('renders channel title', () => {
-    render(
+    renderWithRouter(
       <ChannelCard
         channel={mockChannel}
-        index={0}
         getFieldColor={mockGetFieldColor}
       />
     );
@@ -37,10 +36,9 @@ describe('ChannelCard', () => {
   });
 
   it('renders channel description', () => {
-    render(
+    renderWithRouter(
       <ChannelCard
         channel={mockChannel}
-        index={0}
         getFieldColor={mockGetFieldColor}
       />
     );
@@ -51,10 +49,9 @@ describe('ChannelCard', () => {
   });
 
   it('renders all tags with capitalized names', () => {
-    render(
+    renderWithRouter(
       <ChannelCard
         channel={mockChannel}
-        index={0}
         getFieldColor={mockGetFieldColor}
       />
     );
@@ -64,10 +61,9 @@ describe('ChannelCard', () => {
   });
 
   it('renders member count', () => {
-    render(
+    renderWithRouter(
       <ChannelCard
         channel={mockChannel}
-        index={0}
         getFieldColor={mockGetFieldColor}
       />
     );
@@ -79,10 +75,9 @@ describe('ChannelCard', () => {
   it('renders default member count of 1 when not provided', () => {
     const channelWithoutMembers = { ...mockChannel, memberCount: undefined };
 
-    render(
+    renderWithRouter(
       <ChannelCard
         channel={channelWithoutMembers}
-        index={0}
         getFieldColor={mockGetFieldColor}
       />
     );
@@ -91,10 +86,9 @@ describe('ChannelCard', () => {
   });
 
   it('renders Join Discussion button', () => {
-    render(
+    renderWithRouter(
       <ChannelCard
         channel={mockChannel}
-        index={0}
         getFieldColor={mockGetFieldColor}
       />
     );
@@ -105,10 +99,9 @@ describe('ChannelCard', () => {
   it('does not render tags section when tags array is empty', () => {
     const channelWithoutTags = { ...mockChannel, tags: [] };
 
-    render(
+    renderWithRouter(
       <ChannelCard
         channel={channelWithoutTags}
-        index={0}
         getFieldColor={mockGetFieldColor}
       />
     );

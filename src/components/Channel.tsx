@@ -6,12 +6,16 @@ import {
   Button,
   Divider,
   Flex,
+  FormControl,
+  FormLabel,
   HStack,
   Heading,
+  Input,
   Spinner,
   Tag,
   TagLabel,
   Text,
+  Textarea,
   VStack,
 } from '@chakra-ui/react';
 import { Link as RouterLink, useParams } from 'react-router-dom';
@@ -60,6 +64,10 @@ const Channel = () => {
   const [messages, setMessages] = useState<MessageType[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [authorInput, setAuthorInput] = useState('');
+  const [messageInput, setMessageInput] = useState('');
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (!id) {
@@ -96,6 +104,46 @@ const Channel = () => {
     if (!messages.length) return [null, []] as const;
     return [messages[0], messages.slice(1)] as const;
   }, [messages]);
+
+  const handleAuthorChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (submitError) setSubmitError(null);
+    setAuthorInput(event.target.value);
+  };
+
+  const handleMessageChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+    if (submitError) setSubmitError(null);
+    setMessageInput(event.target.value);
+  };
+
+  const handleSendMessage = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const trimmedContent = messageInput.trim();
+
+    if (!id || !trimmedContent) {
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      setSubmitError(null);
+
+      const response = await axios.post<MessageType>('http://localhost:5000/api/messages', {
+        channelId: id,
+        content: trimmedContent,
+        author: authorInput.trim() || undefined,
+      });
+
+      setMessages((prev) => [...prev, response.data]);
+      setMessageInput('');
+    } catch (err) {
+      console.error('Failed to send message:', err);
+      setSubmitError('Unable to send your message right now. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const isSendDisabled = !messageInput.trim() || isSubmitting;
 
   if (loading) {
     return (
@@ -237,6 +285,7 @@ const Channel = () => {
             {firstMessage && (
               <VStack align="stretch" spacing={4}>
                 <Box
+                  data-testid="conversation-message"
                   borderRadius="xl"
                   borderWidth="2px"
                   borderColor="navy.600"
@@ -266,6 +315,7 @@ const Channel = () => {
                     {otherMessages.map((message) => (
                       <Box
                         key={message._id}
+                        data-testid="conversation-message"
                         bg="white"
                         borderRadius="xl"
                         borderWidth="1px"
@@ -291,6 +341,70 @@ const Channel = () => {
               </VStack>
             )}
           </VStack>
+
+          <Box
+            as="form"
+            onSubmit={handleSendMessage}
+            bg="white"
+            borderRadius="xl"
+            boxShadow="sm"
+            p={{ base: 5, md: 6 }}
+          >
+            <VStack align="stretch" spacing={5}>
+              <Heading size="sm" color="gray.800">
+                Add to the conversation
+              </Heading>
+
+              <FormControl>
+                <FormLabel fontSize="sm" color="gray.600">
+                  Display name (optional)
+                </FormLabel>
+                <Input
+                  value={authorInput}
+                  onChange={handleAuthorChange}
+                  placeholder="Your name (optional)"
+                  bg="gray.50"
+                  borderColor="gray.200"
+                  _focus={{ borderColor: 'navy.300', boxShadow: 'none' }}
+                />
+              </FormControl>
+
+              <FormControl isRequired>
+                <FormLabel fontSize="sm" color="gray.600">
+                  Message
+                </FormLabel>
+                <Textarea
+                  value={messageInput}
+                  onChange={handleMessageChange}
+                  placeholder="Share your thoughts, references, or questions..."
+                  rows={4}
+                  bg="gray.50"
+                  borderColor="gray.200"
+                  _focus={{ borderColor: 'navy.300', boxShadow: 'none' }}
+                />
+              </FormControl>
+
+              {submitError && (
+                <Alert status="error" borderRadius="md">
+                  <AlertIcon />
+                  {submitError}
+                </Alert>
+              )}
+
+              <Button
+                type="submit"
+                alignSelf={{ base: 'stretch', md: 'flex-end' }}
+                colorScheme="navy"
+                color="white"
+                bg="navy.800"
+                _hover={{ bg: 'navy.700' }}
+                isLoading={isSubmitting}
+                isDisabled={isSendDisabled}
+              >
+                Send message
+              </Button>
+            </VStack>
+          </Box>
         </VStack>
       </Box>
     </Box>

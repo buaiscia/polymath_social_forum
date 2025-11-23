@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '../test/utils';
-import { BrowserRouter } from 'react-router-dom';
+import { renderWithRouter, screen } from '../test/utils';
 import CreateChannel from './CreateChannel';
 
 // Mock axios
@@ -15,11 +14,6 @@ vi.mock('react-router-dom', async () => {
     useNavigate: () => mockNavigate,
   };
 });
-
-// Helper to render with Router
-const renderWithRouter = (component: React.ReactElement) => {
-  return render(<BrowserRouter>{component}</BrowserRouter>);
-};
 
 describe('CreateChannel', () => {
   beforeEach(() => {
