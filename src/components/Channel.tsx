@@ -131,114 +131,168 @@ const Channel = () => {
   }
 
   return (
-    <Box px={{ base: 4, md: 12 }} py={10}>
-      <VStack align="stretch" spacing={8} maxW="960px" mx="auto">
-        <Button
-          as={RouterLink}
-          to="/"
-          alignSelf="flex-start"
-          variant="ghost"
-          colorScheme="navy"
-        >
-          ← Back to channels
-        </Button>
+    <Box>
+      {/* Full-width page header */}
+      <Box
+        bg="navy.800"
+        color="white"
+        py={{ base: 12, md: 16 }}
+        px={{ base: 4, md: 12 }}
+        mb={8}
+      >
+        <VStack align="stretch" spacing={6} mx="auto">
+          <Button
+            as={RouterLink}
+            to="/"
+            alignSelf="flex-start"
+            variant="ghost"
+            colorScheme="whiteAlpha"
+            color="white"
+            _hover={{ bg: 'whiteAlpha.200' }}
+          >
+            ← Back to channels
+          </Button>
 
-        <VStack align="stretch" spacing={3} bg="white" boxShadow="sm" borderRadius="xl" p={{ base: 6, md: 8 }}>
-          <HStack justify="space-between" align="flex-start" spacing={6}>
-            <VStack align="flex-start" spacing={2}>
-              <Heading size="lg" color="gray.900">
-                {channel.title}
-              </Heading>
+          <Flex direction={{ base: 'column', md: 'row' }} gap={{ base: 8, md: 12 }} align={{ base: 'flex-start', md: 'flex-end' }}>
+            {/* Stats card */}
+            <Box
+              bg="white"
+              color="navy.800"
+              borderRadius="xl"
+              px={6}
+              py={5}
+              textAlign="center"
+              boxShadow="xl"
+              minW="120px"
+            >
+              <Text fontSize="3xl" fontWeight="black">
+                {messages.length}
+              </Text>
+              <Text fontSize="xs" textTransform="uppercase" letterSpacing="0.2em" fontWeight="semibold">
+                Messages
+              </Text>
               {channel.createdAt && (
-                <Text fontSize="sm" color="gray.500">
-                  Created {formatDate(channel.createdAt)}
+                <Text fontSize="xs" color="gray.600" mt={1}>
+                  since {formatDate(channel.createdAt)}
                 </Text>
               )}
-            </VStack>
-          </HStack>
-          <Text fontSize="md" color="gray.600" lineHeight="1.7">
-            {channel.description}
-          </Text>
-          {channel.tags?.length > 0 && (
-            <HStack spacing={2} pt={2} wrap="wrap">
-              {channel.tags.map((tag) => (
-                <Tag key={tag._id} size="md" borderRadius="full" bg={tag.color} color="white" px={3} py={1}>
-                  <TagLabel>{tag.name.charAt(0).toUpperCase() + tag.name.slice(1)}</TagLabel>
-                </Tag>
-              ))}
-            </HStack>
-          )}
-        </VStack>
-
-        <VStack align="stretch" spacing={6}>
-          <Heading size="md" color="gray.800">
-            Conversation
-          </Heading>
-
-          {!firstMessage && (
-            <Box bg="white" borderRadius="lg" boxShadow="sm" p={6}>
-              <Text color="gray.600">No messages yet. Start the conversation!</Text>
             </Box>
-          )}
 
-          {firstMessage && (
-            <VStack align="stretch" spacing={4}>
-              <Box
-                borderRadius="xl"
-                borderWidth="2px"
-                borderColor="navy.600"
-                bg="white"
-                boxShadow="md"
-                p={{ base: 5, md: 6 }}
-              >
-                <HStack justify="space-between" align="flex-start" spacing={4} mb={2}>
-                  <VStack align="flex-start" spacing={1}>
-                    <Text fontWeight="semibold" color="gray.800">
-                      {firstMessage.author || 'Anonymous'}
-                    </Text>
-                    <Text fontSize="sm" color="gray.500">
-                      Original post · {formatDate(firstMessage.createdAt)}
-                    </Text>
-                  </VStack>
-                </HStack>
-                <Text color="gray.700" lineHeight="1.8">
-                  {firstMessage.content}
+            {/* Channel info */}
+            <VStack align="flex-start" spacing={4} flex="1">
+              <VStack align="flex-start" spacing={2}>
+                <Text fontSize="xs" textTransform="uppercase" letterSpacing="0.3em" color="whiteAlpha.700" fontWeight="semibold">
+                  Channel Overview
                 </Text>
-              </Box>
+                <Heading size="xl" lineHeight="1.2" letterSpacing="tight" color="white">
+                  {channel.title}
+                </Heading>
+              </VStack>
 
-              {otherMessages.length > 0 && <Divider borderColor="gray.200" />}
+              <Text fontSize="lg" color="whiteAlpha.900" lineHeight="1.8">
+                {channel.description}
+              </Text>
 
-              {otherMessages.length > 0 && (
-                <VStack align="stretch" spacing={4}>
-                  {otherMessages.map((message) => (
-                    <Box
-                      key={message._id}
-                      bg="white"
-                      borderRadius="xl"
-                      borderWidth="1px"
-                      borderColor="gray.200"
-                      boxShadow="sm"
-                      p={{ base: 5, md: 6 }}
+              {channel.tags?.length > 0 && (
+                <HStack spacing={2} wrap="wrap" pt={2}>
+                  {channel.tags.map((tag) => (
+                    <Tag
+                      key={tag._id}
+                      size="lg"
+                      bg="whiteAlpha.200"
+                      borderRadius="full"
+                      backdropFilter="blur(8px)"
+                      color="white"
+                      px={4}
+                      py={2}
+                      border="1px solid"
+                      borderColor="whiteAlpha.300"
                     >
-                      <HStack justify="space-between" spacing={4} mb={2}>
-                        <Text fontWeight="medium" color="gray.700">
-                          {message.author || 'Anonymous'}
-                        </Text>
-                        <Text fontSize="sm" color="gray.500">
-                          {formatDate(message.createdAt)}
-                        </Text>
-                      </HStack>
-                      <Text color="gray.700" lineHeight="1.7">
-                        {message.content}
-                      </Text>
-                    </Box>
+                      <TagLabel fontWeight="semibold" fontSize="sm">
+                        {tag.name.charAt(0).toUpperCase() + tag.name.slice(1)}
+                      </TagLabel>
+                    </Tag>
                   ))}
-                </VStack>
+                </HStack>
               )}
             </VStack>
-          )}
+          </Flex>
         </VStack>
-      </VStack>
+      </Box>
+
+      {/* Main content */}
+      <Box px={{ base: 4, md: 12 }} pb={10}>
+        <VStack align="stretch" spacing={8} mx="auto">
+          <VStack align="stretch" spacing={6}>
+            <Heading size="md" color="gray.800">
+              Conversation
+            </Heading>
+
+            {!firstMessage && (
+              <Box bg="white" borderRadius="lg" boxShadow="sm" p={6}>
+                <Text color="gray.600">No messages yet. Start the conversation!</Text>
+              </Box>
+            )}
+
+            {firstMessage && (
+              <VStack align="stretch" spacing={4}>
+                <Box
+                  borderRadius="xl"
+                  borderWidth="2px"
+                  borderColor="navy.600"
+                  bg="white"
+                  boxShadow="md"
+                  p={{ base: 5, md: 6 }}
+                >
+                  <HStack justify="space-between" align="flex-start" spacing={4} mb={2}>
+                    <VStack align="flex-start" spacing={1}>
+                      <Text fontWeight="semibold" color="gray.800">
+                        {firstMessage.author || 'Anonymous'}
+                      </Text>
+                      <Text fontSize="sm" color="gray.500">
+                        Original post · {formatDate(firstMessage.createdAt)}
+                      </Text>
+                    </VStack>
+                  </HStack>
+                  <Text color="gray.700" lineHeight="1.8">
+                    {firstMessage.content}
+                  </Text>
+                </Box>
+
+                {otherMessages.length > 0 && <Divider borderColor="gray.200" />}
+
+                {otherMessages.length > 0 && (
+                  <VStack align="stretch" spacing={4}>
+                    {otherMessages.map((message) => (
+                      <Box
+                        key={message._id}
+                        bg="white"
+                        borderRadius="xl"
+                        borderWidth="1px"
+                        borderColor="gray.200"
+                        boxShadow="sm"
+                        p={{ base: 5, md: 6 }}
+                      >
+                        <HStack justify="space-between" spacing={4} mb={2}>
+                          <Text fontWeight="medium" color="gray.700">
+                            {message.author || 'Anonymous'}
+                          </Text>
+                          <Text fontSize="sm" color="gray.500">
+                            {formatDate(message.createdAt)}
+                          </Text>
+                        </HStack>
+                        <Text color="gray.700" lineHeight="1.7">
+                          {message.content}
+                        </Text>
+                      </Box>
+                    ))}
+                  </VStack>
+                )}
+              </VStack>
+            )}
+          </VStack>
+        </VStack>
+      </Box>
     </Box>
   );
 };
