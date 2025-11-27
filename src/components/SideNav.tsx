@@ -22,7 +22,7 @@ const SideNav = () => {
   const { user, logout, openLoginModal, openRegisterModal } = useAuth();
 
   return (
-    <Box w="280px" p={6} bg="white" borderRight="1px" borderColor="gray.200" h="calc(100vh - 76px)" position="fixed" left={0} top="76px">
+    <Box w="280px" p={6} bg="white" borderRight="1px" borderColor="gray.200" h="calc(100vh - 76px)" position="fixed" left={0}>
       <VStack spacing={6} align="stretch">
         <Box>
           <Text color="gray.600" fontWeight="medium" mb={4}>
@@ -41,28 +41,32 @@ const SideNav = () => {
             >
               Explore Channels
             </Button>
-            <Button
-              as={Link}
-              to="/create"
-              variant="ghost"
-              justifyContent="flex-start"
-              leftIcon={<Icon as={FiPlus} />}
-              color="gray.700"
-              _hover={{ bg: 'gray.100' }}
-            >
-              Create Channel
-            </Button>
-            <Button
-              as={Link}
-              to="/my-channels"
-              variant="ghost"
-              justifyContent="flex-start"
-              leftIcon={<Icon as={FiUser} />}
-              color="gray.700"
-              _hover={{ bg: 'gray.100' }}
-            >
-              My Channels
-            </Button>
+            {user && (
+              <>
+                <Button
+                  as={Link}
+                  to="/create"
+                  variant="ghost"
+                  justifyContent="flex-start"
+                  leftIcon={<Icon as={FiPlus} />}
+                  color="gray.700"
+                  _hover={{ bg: 'gray.100' }}
+                >
+                  Create Channel
+                </Button>
+                <Button
+                  as={Link}
+                  to="/my-channels"
+                  variant="ghost"
+                  justifyContent="flex-start"
+                  leftIcon={<Icon as={FiUser} />}
+                  color="gray.700"
+                  _hover={{ bg: 'gray.100' }}
+                >
+                  My Channels
+                </Button>
+              </>
+            )}
           </VStack>
         </Box>
 
