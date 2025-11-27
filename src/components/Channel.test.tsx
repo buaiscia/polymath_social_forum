@@ -3,6 +3,7 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { Route, Routes } from 'react-router-dom';
 import axios from 'axios';
 import { renderWithRouter } from '../test/utils';
+import type { AuthUser } from '../context/authTypes';
 import Channel from './Channel';
 
 vi.mock('axios');
@@ -32,12 +33,19 @@ const initialMessage: MockMessage = {
   createdAt: '2025-08-08T21:50:00.000Z',
 };
 
+const mockAuthUser: AuthUser = {
+  _id: 'user-1',
+  email: 'scholar@example.com',
+  username: 'Scholar',
+};
+
 const renderChannel = () =>
   renderWithRouter(
     <Routes>
       <Route path="/channels/:id" element={<Channel />} />
     </Routes>,
     `/channels/${mockChannel._id}`,
+    { authUser: mockAuthUser, authToken: 'test-token' },
   );
 
 describe('Channel messaging flow', () => {
@@ -47,11 +55,13 @@ describe('Channel messaging flow', () => {
 
   const mockGet = (messages: MockMessage[] = []) => {
     vi.mocked(axios.get).mockImplementation((url) => {
-      if (typeof url === 'string' && url.includes('/api/channels/')) {
-        return Promise.resolve({ data: mockChannel });
-      }
-      if (typeof url === 'string' && url.includes('/api/messages')) {
-        return Promise.resolve({ data: messages });
+      if (typeof url === 'string') {
+        if (url.includes('/channels/')) {
+          return Promise.resolve({ data: mockChannel });
+        }
+        if (url.includes('/messages')) {
+          return Promise.resolve({ data: messages });
+        }
       }
       return Promise.resolve({ data: [] });
     });
@@ -90,9 +100,6 @@ describe('Channel messaging flow', () => {
       expect(screen.getAllByTestId('conversation-message')).toHaveLength(1);
     });
 
-    fireEvent.change(screen.getByPlaceholderText(/your name/i), {
-      target: { value: 'Ada' },
-    });
     fireEvent.change(screen.getByPlaceholderText(/share your thoughts/i), {
       target: { value: 'Sharing a new idea.' },
     });
@@ -101,11 +108,10 @@ describe('Channel messaging flow', () => {
 
     await waitFor(() => {
       expect(axios.post).toHaveBeenCalledWith(
-        'http://localhost:5000/api/messages',
+        '/messages',
         {
           channelId: mockChannel._id,
           content: 'Sharing a new idea.',
-          author: 'Ada',
         }
       );
       expect(screen.getAllByTestId('conversation-message')).toHaveLength(2);
@@ -194,20 +200,16 @@ describe('Channel messaging flow', () => {
 
     if (!replyForm) return;
 
-    fireEvent.change(within(replyForm).getByPlaceholderText(/your name/i), {
-      target: { value: 'Grace' },
-    });
     fireEvent.change(replyTextarea, { target: { value: 'Responding in-thread.' } });
 
     fireEvent.click(within(replyForm).getByRole('button', { name: /send reply/i }));
 
     await waitFor(() => {
       expect(axios.post).toHaveBeenCalledWith(
-        'http://localhost:5000/api/messages',
+        '/messages',
         {
           channelId: mockChannel._id,
           content: 'Responding in-thread.',
-          author: 'Grace',
           parentMessageId: initialMessage._id,
         },
       );

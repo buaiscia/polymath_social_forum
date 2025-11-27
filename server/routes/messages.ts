@@ -2,6 +2,7 @@ import express from 'express';
 import mongoose from 'mongoose';
 import { Message } from '../models/Message';
 import { Channel } from '../models/Channel';
+import { requireAuth } from '../middleware/auth';
 
 const router = express.Router();
 
@@ -48,9 +49,9 @@ router.get('/:id', async (req, res) => {
 });
 
 // Create a new message
-router.post('/', async (req, res) => {
+router.post('/', requireAuth, async (req, res) => {
   try {
-    const { channelId, author, content, parentMessageId } = req.body;
+    const { channelId, content, parentMessageId } = req.body;
 
     if (!channelId || typeof channelId !== 'string' || !mongoose.Types.ObjectId.isValid(channelId)) {
       return res.status(400).json({ message: 'Valid channelId is required' });
@@ -85,9 +86,7 @@ router.post('/', async (req, res) => {
       }
     }
 
-    const authorName = typeof author === 'string' && author.trim().length > 0
-      ? author.trim()
-      : undefined;
+    const authorName = req.user?.username;
 
     const message = await Message.create({
       channel: channelId,

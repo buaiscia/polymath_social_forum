@@ -10,7 +10,6 @@ import {
   FormLabel,
   HStack,
   Heading,
-  Input,
   Spinner,
   Tag,
   TagLabel,
@@ -20,6 +19,7 @@ import {
 } from '@chakra-ui/react';
 import { Link as RouterLink, useParams } from 'react-router-dom';
 import axios from 'axios';
+import { useAuth } from '../context/useAuth';
 
 interface TagType {
   _id: string;
@@ -118,16 +118,15 @@ const replyCountLabel = (count: number) => `${count} repl${count === 1 ? 'y' : '
 
 const Channel = () => {
   const { id } = useParams<{ id: string }>();
+  const { user, openLoginModal, openRegisterModal } = useAuth();
   const [channel, setChannel] = useState<ChannelType | null>(null);
   const [messages, setMessages] = useState<MessageType[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [rootAuthor, setRootAuthor] = useState('');
   const [rootMessage, setRootMessage] = useState('');
   const [rootSubmitError, setRootSubmitError] = useState<string | null>(null);
   const [isRootSubmitting, setIsRootSubmitting] = useState(false);
   const [replyParentId, setReplyParentId] = useState<string | null>(null);
-  const [replyAuthor, setReplyAuthor] = useState('');
   const [replyMessage, setReplyMessage] = useState('');
   const [replySubmitError, setReplySubmitError] = useState<string | null>(null);
   const [isReplySubmitting, setIsReplySubmitting] = useState(false);
@@ -144,8 +143,8 @@ const Channel = () => {
       try {
         setLoading(true);
         const [channelResponse, messagesResponse] = await Promise.all([
-          axios.get<ChannelType>(`http://localhost:5000/api/channels/${id}`),
-          axios.get<MessageType[]>(`http://localhost:5000/api/messages`, {
+          axios.get<ChannelType>(`/channels/${id}`),
+          axios.get<MessageType[]>(`/messages`, {
             params: { channelId: id },
           }),
         ]);
@@ -164,24 +163,24 @@ const Channel = () => {
     fetchChannel();
   }, [id]);
 
+  const isAuthenticated = Boolean(user);
+
+  const ensureAuthenticated = () => {
+    if (!user) {
+      openLoginModal();
+      return false;
+    }
+    return true;
+  };
+
   const { primaryMessage, primaryChildren, otherThreads } = useMemo(
     () => buildThreadStructure(messages),
     [messages],
   );
 
-  const handleRootAuthorChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (rootSubmitError) setRootSubmitError(null);
-    setRootAuthor(event.target.value);
-  };
-
   const handleRootMessageChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
     if (rootSubmitError) setRootSubmitError(null);
     setRootMessage(event.target.value);
-  };
-
-  const handleReplyAuthorChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (replySubmitError) setReplySubmitError(null);
-    setReplyAuthor(event.target.value);
   };
 
   const handleReplyMessageChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -192,18 +191,20 @@ const Channel = () => {
   const handleReplyCancel = () => {
     setReplyParentId(null);
     setReplyMessage('');
-    setReplyAuthor('');
     setReplySubmitError(null);
   };
 
   const handleReplyToggle = (messageId: string) => {
+    if (!user) {
+      openLoginModal();
+      return;
+    }
     if (replyParentId === messageId) {
       handleReplyCancel();
       return;
     }
     setReplyParentId(messageId);
     setReplyMessage('');
-    setReplyAuthor('');
     setReplySubmitError(null);
   };
 
@@ -222,14 +223,17 @@ const Channel = () => {
       return;
     }
 
+    if (!ensureAuthenticated()) {
+      return;
+    }
+
     try {
       setIsRootSubmitting(true);
       setRootSubmitError(null);
 
-      const response = await axios.post<MessageType>('http://localhost:5000/api/messages', {
+      const response = await axios.post<MessageType>('/messages', {
         channelId: id,
         content: trimmedContent,
-        author: rootAuthor.trim() || undefined,
       });
 
       setMessages((prev) => [...prev, response.data]);
@@ -250,16 +254,19 @@ const Channel = () => {
       return;
     }
 
+    if (!ensureAuthenticated()) {
+      return;
+    }
+
     const parentId = replyParentId;
 
     try {
       setIsReplySubmitting(true);
       setReplySubmitError(null);
 
-      const response = await axios.post<MessageType>('http://localhost:5000/api/messages', {
+      const response = await axios.post<MessageType>('/messages', {
         channelId: id,
         content: trimmedContent,
-        author: replyAuthor.trim() || undefined,
         parentMessageId: replyParentId,
       });
 
@@ -281,76 +288,71 @@ const Channel = () => {
   const isReplySubmitDisabled = !replyMessage.trim() || isReplySubmitting;
   const hasMessages = Boolean(primaryMessage || otherThreads.length);
 
-  const renderReplyForm = () => (
-    <Box
-      as="form"
-      onSubmit={handleReplySubmit}
-      mt={4}
-      bg="gray.50"
-      borderRadius="lg"
-      borderWidth="1px"
-      borderColor="gray.200"
-      p={4}
-    >
-      <VStack align="stretch" spacing={3}>
-        <FormControl>
-          <FormLabel fontSize="sm" color="gray.600">
-            Display name (optional)
-          </FormLabel>
-          <Input
-            value={replyAuthor}
-            onChange={handleReplyAuthorChange}
-            placeholder="Your name (optional)"
-            bg="white"
-            borderColor="gray.200"
-            _focus={{ borderColor: 'navy.300', boxShadow: 'none' }}
-            size="sm"
-          />
-        </FormControl>
+  const renderReplyForm = () => {
+    if (!isAuthenticated) {
+      return null;
+    }
 
-        <FormControl isRequired>
-          <FormLabel fontSize="sm" color="gray.600">
-            Reply
-          </FormLabel>
-          <Textarea
-            value={replyMessage}
-            onChange={handleReplyMessageChange}
-            placeholder="Share your reply"
-            rows={3}
-            bg="white"
-            borderColor="gray.200"
-            _focus={{ borderColor: 'navy.300', boxShadow: 'none' }}
-            size="sm"
-          />
-        </FormControl>
+    return (
+      <Box
+        as="form"
+        onSubmit={handleReplySubmit}
+        mt={4}
+        bg="gray.50"
+        borderRadius="lg"
+        borderWidth="1px"
+        borderColor="gray.200"
+        p={4}
+      >
+        <VStack align="stretch" spacing={3}>
+          <Text fontSize="sm" color="gray.600">
+            Replying as <strong>{user?.username}</strong>
+          </Text>
 
-        {replySubmitError && (
-          <Alert status="error" borderRadius="md">
-            <AlertIcon />
-            {replySubmitError}
-          </Alert>
-        )}
+          <FormControl isRequired>
+            <FormLabel fontSize="sm" color="gray.600">
+              Reply
+            </FormLabel>
+            <Textarea
+              value={replyMessage}
+              onChange={handleReplyMessageChange}
+              placeholder="Share your reply"
+              rows={3}
+              bg="white"
+              borderColor="gray.200"
+              _focus={{ borderColor: 'navy.300', boxShadow: 'none' }}
+              size="sm"
+            />
+          </FormControl>
 
-        <HStack justify="flex-end">
-          <Button type="button" variant="ghost" size="sm" onClick={handleReplyCancel}>
-            Cancel
-          </Button>
-          <Button
-            type="submit"
-            size="sm"
-            colorScheme="navy"
-            bg="navy.700"
-            color="white"
-            _hover={{ bg: 'navy.600' }}
-            isLoading={isReplySubmitting}
-            isDisabled={isReplySubmitDisabled}
-          >
-            Send reply
-          </Button>
-        </HStack>
-      </VStack>
-    </Box>
-  );
+          {replySubmitError && (
+            <Alert status="error" borderRadius="md">
+              <AlertIcon />
+              {replySubmitError}
+            </Alert>
+          )}
+
+          <HStack justify="flex-end">
+            <Button type="button" variant="ghost" size="sm" onClick={handleReplyCancel}>
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              size="sm"
+              colorScheme="navy"
+              bg="navy.700"
+              color="white"
+              _hover={{ bg: 'navy.600' }}
+              isLoading={isReplySubmitting}
+              isDisabled={isReplySubmitDisabled}
+            >
+              Send reply
+            </Button>
+          </HStack>
+        </VStack>
+      </Box>
+    );
+  };
 
   if (loading) {
     return (
@@ -686,69 +688,80 @@ const Channel = () => {
             )}
           </VStack>
 
-          <Box
-            as="form"
-            onSubmit={handleRootSubmit}
-            bg="white"
-            borderRadius="xl"
-            boxShadow="sm"
-            p={{ base: 5, md: 6 }}
-          >
-            <VStack align="stretch" spacing={5}>
-              <Heading size="sm" color="gray.800">
-                Add to the conversation
-              </Heading>
+          {!isAuthenticated ? (
+            <Box bg="white" borderRadius="xl" boxShadow="sm" p={{ base: 5, md: 6 }}>
+              <VStack align="stretch" spacing={4}>
+                <Heading size="sm" color="gray.800">
+                  Sign in to participate
+                </Heading>
+                <Text color="gray.600">
+                  Join the conversation by creating an account or signing in. Replies are attributed to your profile so discussions stay authentic.
+                </Text>
+                <HStack spacing={3}>
+                  <Button colorScheme="navy" onClick={openLoginModal} flex="1">
+                    Login
+                  </Button>
+                  <Button variant="outline" colorScheme="navy" onClick={openRegisterModal} flex="1">
+                    Register
+                  </Button>
+                </HStack>
+              </VStack>
+            </Box>
+          ) : (
+            <Box
+              as="form"
+              onSubmit={handleRootSubmit}
+              bg="white"
+              borderRadius="xl"
+              boxShadow="sm"
+              p={{ base: 5, md: 6 }}
+            >
+              <VStack align="stretch" spacing={5}>
+                <Heading size="sm" color="gray.800">
+                  Add to the conversation
+                </Heading>
 
-              <FormControl>
-                <FormLabel fontSize="sm" color="gray.600">
-                  Display name (optional)
-                </FormLabel>
-                <Input
-                  value={rootAuthor}
-                  onChange={handleRootAuthorChange}
-                  placeholder="Your name (optional)"
-                  bg="gray.50"
-                  borderColor="gray.200"
-                  _focus={{ borderColor: 'navy.300', boxShadow: 'none' }}
-                />
-              </FormControl>
+                <Text fontSize="sm" color="gray.500">
+                  Signed in as <strong>{user?.username}</strong>
+                </Text>
 
-              <FormControl isRequired>
-                <FormLabel fontSize="sm" color="gray.600">
-                  Message
-                </FormLabel>
-                <Textarea
-                  value={rootMessage}
-                  onChange={handleRootMessageChange}
-                  placeholder="Share your thoughts, references, or questions..."
-                  rows={4}
-                  bg="gray.50"
-                  borderColor="gray.200"
-                  _focus={{ borderColor: 'navy.300', boxShadow: 'none' }}
-                />
-              </FormControl>
+                <FormControl isRequired>
+                  <FormLabel fontSize="sm" color="gray.600">
+                    Message
+                  </FormLabel>
+                  <Textarea
+                    value={rootMessage}
+                    onChange={handleRootMessageChange}
+                    placeholder="Share your thoughts, references, or questions..."
+                    rows={4}
+                    bg="gray.50"
+                    borderColor="gray.200"
+                    _focus={{ borderColor: 'navy.300', boxShadow: 'none' }}
+                  />
+                </FormControl>
 
-              {rootSubmitError && (
-                <Alert status="error" borderRadius="md">
-                  <AlertIcon />
-                  {rootSubmitError}
-                </Alert>
-              )}
+                {rootSubmitError && (
+                  <Alert status="error" borderRadius="md">
+                    <AlertIcon />
+                    {rootSubmitError}
+                  </Alert>
+                )}
 
-              <Button
-                type="submit"
-                alignSelf={{ base: 'stretch', md: 'flex-end' }}
-                colorScheme="navy"
-                color="white"
-                bg="navy.800"
-                _hover={{ bg: 'navy.700' }}
-                isLoading={isRootSubmitting}
-                isDisabled={isRootSubmitDisabled}
-              >
-                Send message
-              </Button>
-            </VStack>
-          </Box>
+                <Button
+                  type="submit"
+                  alignSelf={{ base: 'stretch', md: 'flex-end' }}
+                  colorScheme="navy"
+                  color="white"
+                  bg="navy.800"
+                  _hover={{ bg: 'navy.700' }}
+                  isLoading={isRootSubmitting}
+                  isDisabled={isRootSubmitDisabled}
+                >
+                  Send message
+                </Button>
+              </VStack>
+            </Box>
+          )}
         </VStack>
       </Box>
     </Box>
