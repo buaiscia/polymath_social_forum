@@ -1,13 +1,33 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import axios from 'axios';
+import type { AxiosError, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 import { ChakraProvider } from '@chakra-ui/react';
 import theme from '../theme';
 import { AuthProvider } from './AuthContext';
 import { useAuth } from './useAuth';
 
-vi.mock('axios');
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
+const createAxiosError = (message: string): AxiosError<{ message: string }> => ({
+  name: 'AxiosError',
+  message,
+  config: { headers: {} } as InternalAxiosRequestConfig,
+  request: {},
+  response: {
+    data: { message },
+    status: 400,
+    statusText: 'Bad Request',
+    headers: {},
+    config: { headers: {} } as InternalAxiosRequestConfig,
+  } as AxiosResponse<{ message: string }>,
+  isAxiosError: true,
+  toJSON: () => ({ message }),
+  code: 'ERR_BAD_REQUEST',
+});
 
 const RegisterTestHarness = () => {
   const { openRegisterModal, register } = useAuth();
@@ -37,12 +57,9 @@ const renderWithProvider = () =>
 describe('AuthProvider register flow', () => {
   it('surfaces the server validation error when password strength is rejected', async () => {
     const user = userEvent.setup();
-    vi.mocked(axios.post).mockRejectedValueOnce({
-      isAxiosError: true,
-      response: {
-        data: { message: 'Password must be 8+ chars with upper, lower, number, and symbol.' },
-      },
-    });
+    vi.spyOn(axios, 'post').mockRejectedValueOnce(
+      createAxiosError('Password must be 8+ chars with upper, lower, number, and symbol.'),
+    );
 
     renderWithProvider();
 
