@@ -1,6 +1,7 @@
 import type { ComponentProps } from 'react';
 import type { UseDisclosureReturn } from '@chakra-ui/react';
 import { describe, it, expect, vi } from 'vitest';
+import userEvent from '@testing-library/user-event';
 import { fireEvent, render, screen, within } from '../test/utils';
 import { AuthModals } from './AuthModals';
 
@@ -132,5 +133,27 @@ describe('AuthModals', () => {
     renderAuthModals({ loginError: 'Invalid credentials', registerDisclosure: buildDisclosure() });
 
     expect(screen.getByText('Invalid credentials')).toBeInTheDocument();
+  });
+
+  it('submits the login form when Enter is pressed inside a field', async () => {
+    const props = renderAuthModals({ registerDisclosure: buildDisclosure() });
+    const user = userEvent.setup();
+
+    await user.type(screen.getByPlaceholderText('you@example.com'), '{enter}');
+
+    expect(props.onLoginSubmit).toHaveBeenCalledTimes(1);
+  });
+
+  it('submits the register form when Enter is pressed inside a field', async () => {
+    const props = renderAuthModals({
+      loginDisclosure: buildDisclosure(),
+      registerDisclosure: buildDisclosure({ isOpen: true }),
+    });
+    const user = userEvent.setup();
+
+    const registerDialog = screen.getByRole('dialog', { name: 'Create an account' });
+    await user.type(within(registerDialog).getByPlaceholderText('you@example.com'), '{enter}');
+
+    expect(props.onRegisterSubmit).toHaveBeenCalledTimes(1);
   });
 });
