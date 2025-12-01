@@ -1,24 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import axios, { isAxiosError } from 'axios';
-import {
-  useDisclosure,
-  Modal,
-  ModalOverlay,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-  ModalCloseButton,
-  Button,
-  VStack,
-  FormControl,
-  FormLabel,
-  Input,
-  Text,
-  Progress,
-  Alert,
-  AlertIcon,
-} from '@chakra-ui/react';
+import { useDisclosure } from '@chakra-ui/react';
 import type {
   AuthResponse,
   AuthProviderProps,
@@ -27,6 +9,7 @@ import type {
   AuthUser,
 } from './authTypes';
 import { AuthContext } from './AuthContextState';
+import { AuthModals } from '../components/AuthModals';
 
 const AUTH_STORAGE_KEY = 'psf-auth-session';
 
@@ -55,16 +38,6 @@ const storeSession = (session: AuthResponse | null) => {
   } else {
     window.localStorage.removeItem(AUTH_STORAGE_KEY);
   }
-};
-
-const passwordStrength = (password: string) => {
-  let score = 0;
-  if (password.length >= 8) score += 25;
-  if (/[A-Z]/.test(password)) score += 25;
-  if (/[a-z]/.test(password)) score += 20;
-  if (/\d/.test(password)) score += 15;
-  if (/[^\w\s]/.test(password)) score += 15;
-  return Math.min(score, 100);
 };
 
 export const AuthProvider = ({ children, initialUser = null, initialAccessToken = null }: AuthProviderProps) => {
@@ -114,6 +87,7 @@ export const AuthProvider = ({ children, initialUser = null, initialAccessToken 
     if (isAxiosError(error)) {
       return (error.response?.data as { message?: string } | undefined)?.message || fallback;
     }
+
     return fallback;
   };
 
@@ -130,7 +104,7 @@ export const AuthProvider = ({ children, initialUser = null, initialAccessToken 
     } finally {
       setLoginLoading(false);
     }
-  }, [persistSession]);
+  }, [loginDisclosure, persistSession]);
 
   const handleRegister = useCallback(async (payload: RegisterPayload) => {
     setRegisterLoading(true);
@@ -145,7 +119,7 @@ export const AuthProvider = ({ children, initialUser = null, initialAccessToken 
     } finally {
       setRegisterLoading(false);
     }
-  }, [persistSession]);
+  }, [persistSession, registerDisclosure]);
 
   const logout = useCallback(async () => {
     try {
@@ -179,6 +153,14 @@ export const AuthProvider = ({ children, initialUser = null, initialAccessToken 
     registerDisclosure.onOpen();
   }, [registerDisclosure]);
 
+  const updateLoginForm = useCallback((field: keyof LoginPayload, value: string) => {
+    setLoginForm((prev) => ({ ...prev, [field]: value }));
+  }, []);
+
+  const updateRegisterForm = useCallback((field: keyof RegisterPayload, value: string) => {
+    setRegisterForm((prev) => ({ ...prev, [field]: value }));
+  }, []);
+
   return (
     <AuthContext.Provider
       value={{
@@ -194,104 +176,20 @@ export const AuthProvider = ({ children, initialUser = null, initialAccessToken 
       }}
     >
       {children}
-      <Modal isOpen={loginDisclosure.isOpen} onClose={loginDisclosure.onClose} isCentered>
-        <ModalOverlay />
-        <ModalContent>
-          <ModalHeader>Sign in</ModalHeader>
-          <ModalCloseButton />
-          <ModalBody>
-            <VStack spacing={4} align="stretch">
-              <FormControl isRequired>
-                <FormLabel>Email or username</FormLabel>
-                <Input
-                  value={loginForm.identifier}
-                  onChange={(event) => setLoginForm((prev) => ({ ...prev, identifier: event.target.value }))}
-                  placeholder="you@example.com"
-                />
-              </FormControl>
-              <FormControl isRequired>
-                <FormLabel>Password</FormLabel>
-                <Input
-                  type="password"
-                  value={loginForm.password}
-                  onChange={(event) => setLoginForm((prev) => ({ ...prev, password: event.target.value }))}
-                  placeholder="••••••••"
-                />
-              </FormControl>
-              {loginError && (
-                <Alert status="error" borderRadius="md">
-                  <AlertIcon />
-                  {loginError}
-                </Alert>
-              )}
-            </VStack>
-          </ModalBody>
-          <ModalFooter>
-            <Button variant="ghost" mr={3} onClick={loginDisclosure.onClose}>
-              Cancel
-            </Button>
-            <Button colorScheme="navy" onClick={() => handleLogin(loginForm)} isLoading={loginLoading}>
-              Sign in
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
-
-      <Modal isOpen={registerDisclosure.isOpen} onClose={registerDisclosure.onClose} isCentered>
-        <ModalOverlay />
-        <ModalContent>
-          <ModalHeader>Create an account</ModalHeader>
-          <ModalCloseButton />
-          <ModalBody>
-            <VStack spacing={4} align="stretch">
-              <FormControl isRequired>
-                <FormLabel>Email</FormLabel>
-                <Input
-                  type="email"
-                  value={registerForm.email}
-                  onChange={(event) => setRegisterForm((prev) => ({ ...prev, email: event.target.value }))}
-                  placeholder="you@example.com"
-                />
-              </FormControl>
-              <FormControl isRequired>
-                <FormLabel>Username</FormLabel>
-                <Input
-                  value={registerForm.username}
-                  onChange={(event) => setRegisterForm((prev) => ({ ...prev, username: event.target.value }))}
-                  placeholder="scholar123"
-                />
-              </FormControl>
-              <FormControl isRequired>
-                <FormLabel>Password</FormLabel>
-                <Input
-                  type="password"
-                  value={registerForm.password}
-                  onChange={(event) => setRegisterForm((prev) => ({ ...prev, password: event.target.value }))}
-                  placeholder="Strong password"
-                />
-                <Text fontSize="sm" color="gray.500" mt={2}>
-                  Use at least 8 characters with upper & lower case, a number and a symbol.
-                </Text>
-                <Progress mt={2} value={passwordStrength(registerForm.password)} size="sm" colorScheme="navy" />
-              </FormControl>
-              {registerError && (
-                <Alert status="error" borderRadius="md">
-                  <AlertIcon />
-                  {registerError}
-                </Alert>
-              )}
-            </VStack>
-          </ModalBody>
-          <ModalFooter>
-            <Button variant="ghost" mr={3} onClick={registerDisclosure.onClose}>
-              Cancel
-            </Button>
-            <Button colorScheme="navy" onClick={() => handleRegister(registerForm)} isLoading={registerLoading}>
-              Create account
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+      <AuthModals
+        loginDisclosure={loginDisclosure}
+        registerDisclosure={registerDisclosure}
+        loginForm={loginForm}
+        registerForm={registerForm}
+        loginError={loginError}
+        registerError={registerError}
+        loginLoading={loginLoading}
+        registerLoading={registerLoading}
+        onLoginFieldChange={updateLoginForm}
+        onRegisterFieldChange={updateRegisterForm}
+        onLoginSubmit={() => handleLogin(loginForm)}
+        onRegisterSubmit={() => handleRegister(registerForm)}
+      />
     </AuthContext.Provider>
   );
 };
