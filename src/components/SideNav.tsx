@@ -13,6 +13,7 @@ import {
   IconButton,
   Tooltip,
   Divider,
+  Portal,
 } from '@chakra-ui/react';
 import { Link } from 'react-router-dom';
 import { FiSearch, FiPlus, FiUser } from 'react-icons/fi';
@@ -91,26 +92,28 @@ const SideNav = () => {
                   size="sm"
                 />
               </Tooltip>
-              <MenuList>
-                {user ? (
-                  <>
-                    <Box px={3} py={2}>
-                      <Text fontSize="sm" color="gray.500">
-                        Signed in as
-                      </Text>
-                      <Text fontWeight="semibold">{user.username}</Text>
-                      <Text fontSize="sm" color="gray.500">{user.email}</Text>
-                    </Box>
-                    <Divider my={1} />
-                    <MenuItem onClick={logout}>Logout</MenuItem>
-                  </>
-                ) : (
-                  <>
-                    <MenuItem onClick={openLoginModal}>Login</MenuItem>
-                    <MenuItem onClick={openRegisterModal}>Register</MenuItem>
-                  </>
-                )}
-              </MenuList>
+              <Portal>
+                <MenuList zIndex="popover">
+                  {user ? (
+                    <>
+                      <Box px={3} py={2}>
+                        <Text fontSize="sm" color="gray.500">
+                          Signed in as
+                        </Text>
+                        <Text fontWeight="semibold">{user.username}</Text>
+                        <Text fontSize="sm" color="gray.500">{user.email}</Text>
+                      </Box>
+                      <Divider my={1} />
+                      <MenuItem onClick={logout}>Logout</MenuItem>
+                    </>
+                  ) : (
+                    <>
+                      <MenuItem onClick={openLoginModal}>Login</MenuItem>
+                      <MenuItem onClick={openRegisterModal}>Register</MenuItem>
+                    </>
+                  )}
+                </MenuList>
+              </Portal>
             </Menu>
           </HStack>
         </Box>
