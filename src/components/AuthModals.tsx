@@ -17,7 +17,7 @@ import {
   AlertIcon,
   type UseDisclosureReturn,
 } from '@chakra-ui/react';
-import { type KeyboardEvent } from 'react';
+import { useMemo, type KeyboardEvent } from 'react';
 import type { LoginPayload, RegisterPayload } from '../context/authTypes';
 
 const passwordStrength = (password: string) => {
@@ -59,12 +59,12 @@ export const AuthModals = ({
   onLoginSubmit,
   onRegisterSubmit,
 }: AuthModalsProps) => {
-  const submitOnEnter = (event: KeyboardEvent<HTMLInputElement>, submitAction: () => void) => {
+  const submitOnEnter = useMemo(() => (event: KeyboardEvent<HTMLInputElement>, submitAction: () => void) => {
     if (event.key === 'Enter') {
       event.preventDefault();
       submitAction();
     }
-  };
+  }, []);
 
   return (
     <>
