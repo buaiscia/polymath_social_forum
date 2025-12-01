@@ -83,10 +83,23 @@ export const AuthProvider = ({ children, initialUser = null, initialAccessToken 
     setInitializing(false);
   }, [initialAccessToken, initialUser, persistSession]);
 
+  type AxiosErrorLike = {
+    isAxiosError?: boolean;
+    response?: { data?: { message?: string } };
+  };
+
   const extractError = (error: unknown, fallback: string) => {
     if (isAxiosError(error)) {
       return (error.response?.data as { message?: string } | undefined)?.message || fallback;
     }
+
+    if (typeof error === 'object' && error !== null) {
+      const maybeAxios = error as AxiosErrorLike;
+      if (maybeAxios.isAxiosError && maybeAxios.response?.data?.message) {
+        return maybeAxios.response.data.message;
+      }
+    }
+
     return fallback;
   };
 

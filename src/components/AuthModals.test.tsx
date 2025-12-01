@@ -91,9 +91,13 @@ describe('AuthModals', () => {
     fireEvent.change(within(registerDialog).getByPlaceholderText('scholar123'), {
       target: { value: 'polymath' },
     });
+    fireEvent.change(within(registerDialog).getByPlaceholderText('Strong password'), {
+      target: { value: 'Iamthis12+' },
+    });
 
     expect(props.onRegisterFieldChange).toHaveBeenCalledWith('email', 'user@example.com');
     expect(props.onRegisterFieldChange).toHaveBeenCalledWith('username', 'polymath');
+    expect(props.onRegisterFieldChange).toHaveBeenCalledWith('password', 'Iamthis12+');
   });
 
   it('fires the login submit callback from the action button', () => {
