@@ -49,7 +49,7 @@ const renderChannel = () =>
       <Route path="/channels/:id" element={<Channel />} />
     </Routes>,
     `/channels/${mockChannel._id}`,
-    { authUser: mockAuthUser, authToken: 'test-token' },
+    { authUser: mockAuthUser },
   );
 
 describe('Channel messaging flow', () => {

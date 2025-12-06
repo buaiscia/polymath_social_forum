@@ -51,7 +51,6 @@ describe('MyChannels', () => {
 
     renderWithRouter(<MyChannels />, '/my-channels', {
       authUser: authenticatedUser,
-      authToken: 'token',
     });
 
     await waitFor(() => {
@@ -73,7 +72,6 @@ describe('MyChannels', () => {
 
     renderWithRouter(<MyChannels />, '/my-channels', {
       authUser: authenticatedUser,
-      authToken: 'token',
     });
 
     await waitFor(() => {
@@ -100,7 +98,6 @@ describe('MyChannels', () => {
 
     renderWithRouter(<MyChannels />, '/my-channels', {
       authUser: authenticatedUser,
-      authToken: 'token',
     });
 
     await waitFor(() => {

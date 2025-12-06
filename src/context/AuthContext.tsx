@@ -11,39 +11,11 @@ import type {
 import { AuthContext } from './AuthContextState';
 import { AuthModals } from '../components/AuthModals';
 
-const AUTH_STORAGE_KEY = 'psf-auth-session';
-
-const setAuthHeader = (token: string | null) => {
-  if (token) {
-    axios.defaults.headers.common.Authorization = `Bearer ${token}`;
-  } else {
-    delete axios.defaults.headers.common.Authorization;
-  }
-};
-
-const getStoredSession = () => {
-  const raw = typeof window !== 'undefined' ? window.localStorage.getItem(AUTH_STORAGE_KEY) : null;
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw) as AuthResponse;
-  } catch {
-    return null;
-  }
-};
-
-const storeSession = (session: AuthResponse | null) => {
-  if (typeof window === 'undefined') return;
-  if (session) {
-    window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
-  } else {
-    window.localStorage.removeItem(AUTH_STORAGE_KEY);
-  }
-};
-
-export const AuthProvider = ({ children, initialUser = null, initialAccessToken = null }: AuthProviderProps) => {
+export const AuthProvider = ({ children, initialUser = null, hydrateOnMount = true }: AuthProviderProps) => {
   const [user, setUser] = useState<AuthUser | null>(initialUser);
-  const [accessToken, setAccessToken] = useState<string | null>(initialAccessToken);
-  const [initializing, setInitializing] = useState(true);
+  const [initializing, setInitializing] = useState(() => (
+    hydrateOnMount ? initialUser === null : false
+  ));
 
   const loginDisclosure = useDisclosure();
   const registerDisclosure = useDisclosure();
@@ -56,47 +28,65 @@ export const AuthProvider = ({ children, initialUser = null, initialAccessToken 
   const [loginForm, setLoginForm] = useState<LoginPayload>({ identifier: '', password: '' });
   const [registerForm, setRegisterForm] = useState<RegisterPayload>({ email: '', username: '', password: '' });
 
-  const persistSession = useCallback((session: AuthResponse | null) => {
-    if (session) {
-      setUser(session.user);
-      setAccessToken(session.accessToken);
-      setAuthHeader(session.accessToken);
-    } else {
+  const refreshSession = useCallback(async () => {
+    try {
+      const { data } = await axios.post<AuthResponse>('/auth/refresh');
+      setUser(data.user);
+      return true;
+    } catch (error) {
       setUser(null);
-      setAccessToken(null);
-      setAuthHeader(null);
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn('Session refresh failed:', error);
+      }
+      return false;
     }
-    storeSession(session);
   }, []);
 
   useEffect(() => {
-    if (initialUser && initialAccessToken) {
-      persistSession({ user: initialUser, accessToken: initialAccessToken });
+    let cancelled = false;
+
+    if (!hydrateOnMount || initialUser) {
       setInitializing(false);
-      return;
+      return () => {
+        cancelled = true;
+      };
     }
 
-    const existing = getStoredSession();
-    if (existing) {
-      persistSession(existing);
-    }
-    setInitializing(false);
-  }, [initialAccessToken, initialUser, persistSession]);
+    const bootstrap = async () => {
+      try {
+        await refreshSession();
+      } catch (error) {
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn('Initial session refresh failed:', error);
+        }
+      } finally {
+        if (!cancelled) {
+          setInitializing(false);
+        }
+      }
+    };
 
-  const extractError = (error: unknown, fallback: string) => {
+    void bootstrap();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [hydrateOnMount, initialUser, refreshSession]);
+
+  const extractError = useCallback((error: unknown, fallback: string) => {
     if (isAxiosError(error)) {
       return (error.response?.data as { message?: string } | undefined)?.message || fallback;
     }
 
     return fallback;
-  };
+  }, []);
 
   const handleLogin = useCallback(async (payload: LoginPayload) => {
     setLoginLoading(true);
     setLoginError(null);
     try {
       const { data } = await axios.post<AuthResponse>('/auth/login', payload);
-      persistSession(data);
+      setUser(data.user);
       loginDisclosure.onClose();
       setLoginForm({ identifier: '', password: '' });
     } catch (error) {
@@ -104,14 +94,14 @@ export const AuthProvider = ({ children, initialUser = null, initialAccessToken 
     } finally {
       setLoginLoading(false);
     }
-  }, [loginDisclosure, persistSession]);
+  }, [extractError, loginDisclosure]);
 
   const handleRegister = useCallback(async (payload: RegisterPayload) => {
     setRegisterLoading(true);
     setRegisterError(null);
     try {
       const { data } = await axios.post<AuthResponse>('/auth/register', payload);
-      persistSession(data);
+      setUser(data.user);
       registerDisclosure.onClose();
       setRegisterForm({ email: '', username: '', password: '' });
     } catch (error) {
@@ -119,7 +109,7 @@ export const AuthProvider = ({ children, initialUser = null, initialAccessToken 
     } finally {
       setRegisterLoading(false);
     }
-  }, [persistSession, registerDisclosure]);
+  }, [extractError, registerDisclosure]);
 
   const logout = useCallback(async () => {
     try {
@@ -127,21 +117,20 @@ export const AuthProvider = ({ children, initialUser = null, initialAccessToken 
     } catch (error) {
       console.warn('Logout error:', error);
     } finally {
-      persistSession(null);
+      setUser(null);
       loginDisclosure.onClose();
       registerDisclosure.onClose();
     }
-  }, [loginDisclosure, registerDisclosure, persistSession]);
+  }, [loginDisclosure, registerDisclosure]);
 
-  const refreshSession = useCallback(async () => {
+  const wrappedRefresh = useCallback(async () => {
     try {
-      const { data } = await axios.post<AuthResponse>('/auth/refresh');
-      persistSession(data);
+      await refreshSession();
     } catch (error) {
       console.warn('Refresh error:', error);
-      persistSession(null);
+      setUser(null);
     }
-  }, [persistSession]);
+  }, [refreshSession]);
 
   const openLoginModal = useCallback(() => {
     setLoginError(null);
@@ -165,12 +154,11 @@ export const AuthProvider = ({ children, initialUser = null, initialAccessToken 
     <AuthContext.Provider
       value={{
         user,
-        accessToken,
         initializing,
         login: handleLogin,
         register: handleRegister,
         logout,
-        refreshSession,
+        refreshSession: wrappedRefresh,
         openLoginModal,
         openRegisterModal,
       }}

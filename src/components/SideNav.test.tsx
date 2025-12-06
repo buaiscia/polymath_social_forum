@@ -29,7 +29,6 @@ const mockAuthUser: AuthUser = {
 
 const createAuthValue = (overrides: Partial<AuthContextValue> = {}): AuthContextValue => ({
   user: null,
-  accessToken: null,
   initializing: false,
   login: vi.fn(async () => {}),
   register: vi.fn(async () => {}),

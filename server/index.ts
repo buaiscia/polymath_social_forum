@@ -7,6 +7,7 @@ import { channelRouter } from './routes/channels';
 import { tagRouter } from './routes/tags';
 import { messageRouter } from './routes/messages';
 import { authRouter } from './routes/auth';
+import { csrfProtection } from './middleware/csrf';
 
 dotenv.config();
 
@@ -26,6 +27,9 @@ if (isProduction) {
 app.use(cors({ origin: corsOrigin, credentials: true }));
 app.use(cookieParser());
 app.use(express.json());
+
+const allowedOrigins = corsOrigin ? [corsOrigin] : [];
+app.use(csrfProtection(allowedOrigins));
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGODB_URI as string)

@@ -4,7 +4,9 @@ import validator from 'validator';
 import { User } from '../models/User';
 import { hashPassword, isPasswordStrong, verifyPassword } from '../utils/password';
 import {
+  attachAccessTokenCookie,
   attachRefreshTokenCookie,
+  clearAccessTokenCookie,
   clearRefreshTokenCookie,
   ensureTokenSecretsConfigured,
   generateAccessToken,
@@ -23,8 +25,9 @@ const sendAuthResponse = (res: Response, user: InstanceType<typeof User>, status
   const safeUser = user.toSafeUser();
   const accessToken = generateAccessToken(user, user.tokenVersion);
   const refreshToken = generateRefreshToken(user, user.tokenVersion);
+  attachAccessTokenCookie(res, accessToken);
   attachRefreshTokenCookie(res, refreshToken);
-  return res.status(status).json({ user: safeUser, accessToken });
+  return res.status(status).json({ user: safeUser });
 };
 
 router.post('/register', async (req, res) => {
@@ -140,15 +143,24 @@ router.post('/refresh', async (req, res) => {
   }
 });
 
-router.post('/logout', requireAuth, async (req, res) => {
+router.post('/logout', async (req, res) => {
   try {
-    if (req.user?._id) {
-      await User.findByIdAndUpdate(req.user._id, { $inc: { tokenVersion: 1 } });
+    const { refreshToken } = req.cookies ?? {};
+    if (refreshToken && typeof refreshToken === 'string') {
+      try {
+        const payload = verifyRefreshToken(refreshToken);
+        await User.findByIdAndUpdate(payload.sub, { $inc: { tokenVersion: 1 } });
+      } catch (tokenError) {
+        console.warn('Failed to revoke refresh token during logout:', tokenError);
+      }
     }
+    clearAccessTokenCookie(res);
     clearRefreshTokenCookie(res);
     return res.status(204).send();
   } catch (error) {
     console.error('Logout error:', error);
+    clearAccessTokenCookie(res);
+    clearRefreshTokenCookie(res);
     return res.status(500).json({ message: 'Unable to logout at this time.' });
   }
 });
