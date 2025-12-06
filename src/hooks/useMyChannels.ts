@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import axios, { isAxiosError } from 'axios';
 import type { ChannelSummary } from '../components/ChannelCard';
 
@@ -13,11 +13,19 @@ interface UseMyChannelsResult {
 export const useMyChannels = (enabled = true): UseMyChannelsResult => {
   const [createdChannels, setCreatedChannels] = useState<ChannelSummary[]>([]);
   const [participatedChannels, setParticipatedChannels] = useState<ChannelSummary[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(enabled);
   const [error, setError] = useState<string | null>(null);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const fetchChannels = useCallback(async () => {
     if (!enabled) {
+      if (!isMountedRef.current) return;
       setCreatedChannels([]);
       setParticipatedChannels([]);
       setIsLoading(false);
@@ -26,21 +34,27 @@ export const useMyChannels = (enabled = true): UseMyChannelsResult => {
     }
 
     try {
-      setIsLoading(true);
+      if (isMountedRef.current) {
+        setIsLoading(true);
+      }
       const [createdResponse, participatedResponse] = await Promise.all([
         axios.get<ChannelSummary[]>('/channels/mine'),
         axios.get<ChannelSummary[]>('/channels/participated'),
       ]);
+      if (!isMountedRef.current) return;
       setCreatedChannels(createdResponse.data);
       setParticipatedChannels(participatedResponse.data);
       setError(null);
     } catch (err) {
+      if (!isMountedRef.current) return;
       const message = isAxiosError(err)
         ? err.response?.data?.message || 'Unable to load your channels right now.'
         : 'Unable to load your channels right now.';
       setError(message);
     } finally {
-      setIsLoading(false);
+      if (isMountedRef.current) {
+        setIsLoading(false);
+      }
     }
   }, [enabled]);
 

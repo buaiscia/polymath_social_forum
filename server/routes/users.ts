@@ -9,7 +9,6 @@ router.get('/', async (_req, res) => {
     res.json(users.map((user) => ({
       _id: user._id.toString(),
       username: user.username,
-      email: user.email,
     })));
   } catch (error) {
     console.error('Error fetching users directory:', error);

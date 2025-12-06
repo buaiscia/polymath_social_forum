@@ -47,7 +47,6 @@ const ChannelCard = ({ channel, getFieldColor, creatorName }: ChannelCardProps) 
   const resolvedCreatorName = creatorName
     || (typeof channel.creator === 'string' ? undefined : channel.creator?.username);
   const shouldShowCreator = Boolean(user && resolvedCreatorName);
-  console.log({ channel, creatorName })
 
   const cardContent = (
     <VStack align="stretch" h="full" spacing={4}>

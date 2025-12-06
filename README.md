@@ -192,7 +192,34 @@ Response:
     "title": "Neurodivergent Research",
     "description": "Threads you have posted in but did not create.",
     "tags": [],
-    "createdAt": "2025-09-01T12:00:00.000Z"
+    "createdAt": "2025-09-01T12:00:00.000Z",
+    "creator": {
+      "_id": "507f191e810c19729de860ec",
+      "username": "alice"
+    }
+  }
+]
+```
+
+#### Users
+
+**Get All Users**
+
+```http
+GET /api/users
+```
+
+Response:
+
+```json
+[
+  {
+    "_id": "609f1f77bcf86cd799439022",
+    "username": "nova"
+  },
+  {
+    "_id": "609f1f77bcf86cd799439099",
+    "username": "curie"
   }
 ]
 ```
