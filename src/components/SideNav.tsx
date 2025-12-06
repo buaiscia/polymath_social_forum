@@ -15,13 +15,14 @@ import {
   Divider,
   Portal,
 } from '@chakra-ui/react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { FiSearch, FiPlus, FiUser } from 'react-icons/fi';
 import { useAuth } from '../context/useAuth';
 
 const SideNav = () => {
   const { user, logout, openLoginModal, openRegisterModal } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
 
   const isExploreActive = location.pathname === '/' || location.pathname.startsWith('/channels');
   const isCreateActive = location.pathname === '/create';
@@ -37,6 +38,11 @@ const SideNav = () => {
     color: 'gray.700',
     _hover: { bg: 'gray.100' },
   } as const;
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/');
+  };
 
   return (
     <Box w="280px" p={6} bg="white" borderRight="1px" borderColor="gray.200" h="calc(100vh - 76px)" position="fixed" left={0}>
@@ -119,7 +125,7 @@ const SideNav = () => {
                         <Text fontSize="sm" color="gray.500">{user.email}</Text>
                       </Box>
                       <Divider my={1} />
-                      <MenuItem onClick={logout}>Logout</MenuItem>
+                      <MenuItem onClick={handleLogout}>Logout</MenuItem>
                     </>
                   ) : (
                     <>

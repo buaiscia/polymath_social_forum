@@ -55,6 +55,7 @@ describe('useMyChannels', () => {
     expect(result.current.createdChannels).toEqual(createdChannels);
     expect(result.current.participatedChannels).toEqual(participatedChannels);
     expect(result.current.error).toBeNull();
+    expect(result.current.requiresReauth).toBe(false);
     expect(axios.get).toHaveBeenCalledTimes(2);
   });
 
@@ -68,6 +69,7 @@ describe('useMyChannels', () => {
     expect(result.current.error).toBe('Unable to load your channels right now.');
     expect(result.current.createdChannels).toEqual([]);
     expect(result.current.participatedChannels).toEqual([]);
+    expect(result.current.requiresReauth).toBe(false);
   });
 
   it('uses server error message when available', async () => {
@@ -84,6 +86,7 @@ describe('useMyChannels', () => {
 
     await waitFor(() => expect(result.current.error).toBe('Service temporarily unavailable'));
     expect(result.current.isLoading).toBe(false);
+    expect(result.current.requiresReauth).toBe(false);
   });
 
   it('respects the enabled flag', () => {
@@ -93,6 +96,7 @@ describe('useMyChannels', () => {
     expect(result.current.createdChannels).toEqual([]);
     expect(result.current.participatedChannels).toEqual([]);
     expect(result.current.error).toBeNull();
+    expect(result.current.requiresReauth).toBe(false);
     expect(axios.get).not.toHaveBeenCalled();
   });
 
@@ -113,5 +117,23 @@ describe('useMyChannels', () => {
       await result.current.refetch();
     });
     expect(apiSpy).toHaveBeenCalledTimes(4);
+    expect(result.current.requiresReauth).toBe(false);
+  });
+
+  it('flags reauthentication when the server responds with 401', async () => {
+    vi.mocked(isAxiosError).mockReturnValue(true);
+    const unauthorizedError = {
+      isAxiosError: true,
+      response: {
+        status: 401,
+        data: { message: 'Invalid or expired token' },
+      },
+    } as AxiosError;
+    vi.mocked(axios.get).mockRejectedValue(unauthorizedError);
+
+    const { result } = renderHook(() => useMyChannels(true));
+
+    await waitFor(() => expect(result.current.requiresReauth).toBe(true));
+    expect(result.current.error).toBe('Invalid or expired token');
   });
 });

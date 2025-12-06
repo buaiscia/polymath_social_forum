@@ -181,29 +181,6 @@ Response:
 ]
 ```
 
-#### Users
-
-**Get All Users**
-
-```http
-GET /api/users
-```
-
-Response:
-
-```json
-[
-  {
-    "_id": "609f1f77bcf86cd799439022",
-    "username": "nova"
-  },
-  {
-    "_id": "609f1f77bcf86cd799439099",
-    "username": "curie"
-  }
-]
-```
-
 **Get All Tags**
 
 ```http

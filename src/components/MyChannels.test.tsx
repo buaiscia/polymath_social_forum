@@ -86,4 +86,29 @@ describe('MyChannels', () => {
       expect(axios.get).toHaveBeenCalledTimes(4); // initial two + retry pair
     });
   });
+
+  it('forces logout and returns to login prompt when session expires', async () => {
+    vi.mocked(isAxiosError).mockReturnValue(true);
+    vi.mocked(axios.get).mockRejectedValue({
+      isAxiosError: true,
+      response: {
+        status: 401,
+        data: { message: 'Invalid or expired token' },
+      },
+    });
+    vi.mocked(axios.post).mockResolvedValue({ data: {} });
+
+    renderWithRouter(<MyChannels />, '/my-channels', {
+      authUser: authenticatedUser,
+      authToken: 'token',
+    });
+
+    await waitFor(() => {
+      expect(axios.post).toHaveBeenCalledWith('/auth/logout');
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /login/i })).toBeInTheDocument();
+    });
+  });
 });
