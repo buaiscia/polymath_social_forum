@@ -101,32 +101,12 @@ http://localhost:5000/api
 GET /api/channels
 ```
 
-Response:
-
-```json
-[
-  {
-    "_id": "507f1f77bcf86cd799439011",
-    "title": "Quantum Physics Discussion",
-    "description": "A forum for discussing quantum mechanics and related topics",
-    "tags": [
-      {
-        "_id": "507f191e810c19729de860ea",
-        "name": "physics",
-        "color": "#fbbf24"
-      }
-    ],
-    "createdAt": "2025-10-03T12:00:00.000Z"
-  }
-]
-```
-
-**Create Channel**
-
 ```http
 POST /api/channels
 Content-Type: application/json
+```
 
+```json
 {
   "title": "Philosophy of Mind",
   "description": "Exploring consciousness and mental phenomena",
@@ -155,6 +135,73 @@ Response:
   ],
   "createdAt": "2025-10-03T12:00:00.000Z"
 }
+```
+
+**Get My Channels** _(requires Authentication)_
+
+```http
+GET /api/channels/mine
+```
+
+Response:
+
+```json
+[
+  {
+    "_id": "507f1f77bcf86cd799439012",
+    "title": "Philosophy of Mind",
+    "description": "Exploring consciousness and mental phenomena",
+    "tags": [],
+    "createdAt": "2025-10-03T12:00:00.000Z"
+  }
+]
+```
+
+**Get Participated Channels** _(requires Authentication)_
+
+```http
+GET /api/channels/participated
+```
+
+Response:
+
+```json
+[
+  {
+    "_id": "609f1f77bcf86cd799439099",
+    "title": "Neurodivergent Research",
+    "description": "Threads you have posted in but did not create.",
+    "tags": [],
+    "createdAt": "2025-09-01T12:00:00.000Z",
+    "creator": {
+      "_id": "507f191e810c19729de860ec",
+      "username": "alice"
+    }
+  }
+]
+```
+
+#### Users
+
+**Get All Users**
+
+```http
+GET /api/users
+```
+
+Response:
+
+```json
+[
+  {
+    "_id": "609f1f77bcf86cd799439022",
+    "username": "nova"
+  },
+  {
+    "_id": "609f1f77bcf86cd799439099",
+    "username": "curie"
+  }
+]
 ```
 
 **Get All Tags**

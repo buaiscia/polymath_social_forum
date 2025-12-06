@@ -23,6 +23,10 @@ const mockChannel = {
   description: 'Exploring advanced topics.',
   tags: [],
   createdAt: '2025-08-08T21:46:00.000Z',
+  creator: {
+    _id: 'creator-1',
+    username: 'CreatorUser',
+  },
 };
 
 const initialMessage: MockMessage = {
@@ -79,6 +83,18 @@ describe('Channel messaging flow', () => {
 
     const sendButton = screen.getByRole('button', { name: /send message/i });
     expect(sendButton).toBeDisabled();
+  });
+
+  it('renders the channel creator in the header when present', async () => {
+    mockGet();
+    vi.mocked(axios.post).mockResolvedValue({ data: null });
+
+    renderChannel();
+
+    await waitFor(() => {
+      expect(screen.getByText('Created by')).toBeInTheDocument();
+      expect(screen.getByText('CreatorUser')).toBeInTheDocument();
+    });
   });
 
   it('submits a message and appends it to the thread', async () => {

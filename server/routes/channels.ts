@@ -2,6 +2,7 @@ import express from 'express';
 import mongoose from 'mongoose';
 import { Channel, Tag } from '../models/Channel';
 import { Message } from '../models/Message';
+import { requireAuth } from '../middleware/auth';
 
 const router = express.Router();
 
@@ -29,11 +30,57 @@ router.get('/', async (req, res) => {
       }
     }
 
-    const channels = await Channel.find(query).populate('tags');
+    const channels = await Channel.find(query)
+      .populate('tags')
+      .populate({ path: 'creator', select: 'username' });
     res.json(channels);
   } catch (error) {
     console.error('Error fetching channels:', error);
     res.status(500).json({ message: 'Error fetching channels' });
+  }
+});
+
+router.get('/mine', requireAuth, async (req, res) => {
+  try {
+    if (!req.user?._id) {
+      return res.status(401).json({ message: 'Authentication required' });
+    }
+
+    const channels = await Channel.find({ creator: req.user._id })
+      .populate('tags')
+      .populate({ path: 'creator', select: 'username' });
+    res.json(channels);
+  } catch (error) {
+    console.error('Error fetching user channels:', error);
+    res.status(500).json({ message: 'Error fetching user channels' });
+  }
+});
+
+router.get('/participated', requireAuth, async (req, res) => {
+  try {
+    if (!req.user?._id) {
+      return res.status(401).json({ message: 'Authentication required' });
+    }
+
+    const participatedChannelIds = await Message.distinct('channel', {
+      authorId: req.user._id,
+    });
+
+    if (!participatedChannelIds.length) {
+      return res.json([]);
+    }
+
+    const channels = await Channel.find({
+      _id: { $in: participatedChannelIds },
+      creator: { $ne: req.user._id },
+    })
+      .populate('tags')
+      .populate({ path: 'creator', select: 'username' });
+
+    res.json(channels);
+  } catch (error) {
+    console.error('Error fetching participated channels:', error);
+    res.status(500).json({ message: 'Error fetching participated channels' });
   }
 });
 
@@ -44,7 +91,9 @@ router.get('/:id', async (req, res) => {
       return res.status(400).json({ message: 'Invalid channel ID' });
     }
 
-    const channel = await Channel.findById(req.params.id).populate('tags');
+    const channel = await Channel.findById(req.params.id)
+      .populate('tags')
+      .populate({ path: 'creator', select: 'username' });
 
     if (!channel) {
       return res.status(404).json({ message: 'Channel not found' });
@@ -59,7 +108,7 @@ router.get('/:id', async (req, res) => {
 
 
 // Create a new channel
-router.post('/', async (req, res) => {
+router.post('/', requireAuth, async (req, res) => {
   try {
     const { title, description, tags } = req.body;
 
@@ -101,13 +150,20 @@ router.post('/', async (req, res) => {
       tagIds.push(tag._id);
     }
 
+    if (!req.user?._id) {
+      return res.status(401).json({ message: 'Authentication required' });
+    }
+
     const channel = await Channel.create({
       title: title.trim(),
       description: description.trim(),
       tags: tagIds,
+      creator: req.user._id,
     });
 
-    const populatedChannel = await Channel.findById(channel._id).populate('tags');
+    const populatedChannel = await Channel.findById(channel._id)
+      .populate('tags')
+      .populate({ path: 'creator', select: 'username' });
     res.status(201).json(populatedChannel);
   } catch (error) {
     console.error('Error creating channel:', error);
@@ -138,13 +194,13 @@ router.get('/:id/messages', async (req, res) => {
 });
 
 // Post a new message to a specific channel
-router.post('/:id/messages', async (req, res) => {
+router.post('/:id/messages', requireAuth, async (req, res) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
       return res.status(400).json({ message: 'Invalid channel ID' });
     }
 
-    const { author, content, parentMessageId } = req.body;
+    const { content, parentMessageId } = req.body;
 
     if (!content || typeof content !== 'string' || content.trim().length === 0) {
       return res.status(400).json({ message: 'Message content is required' });
@@ -175,12 +231,15 @@ router.post('/:id/messages', async (req, res) => {
       }
     }
 
-    const authorName = typeof author === 'string' && author.trim().length > 0
-      ? author.trim()
-      : 'Anonymous';
+    if (!req.user?._id) {
+      return res.status(401).json({ message: 'Authentication required' });
+    }
+
+    const authorName = req.user.username;
     const message = await Message.create({
       channel: channel._id,
       parentMessage: parentMessage ? parentMessage._id : undefined,
+      authorId: req.user._id,
       author: authorName,
       content: content.trim(),
     });

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   AlertIcon,
+  Avatar,
   Box,
   Button,
   Divider,
@@ -33,6 +34,12 @@ interface ChannelType {
   description: string;
   tags: TagType[];
   createdAt?: string;
+  creator?:
+  | {
+    _id: string;
+    username: string;
+  }
+  | string;
 }
 
 interface MessageType {
@@ -387,6 +394,10 @@ const Channel = () => {
     );
   }
 
+  const resolvedCreatorName = channel.creator && typeof channel.creator !== 'string'
+    ? channel.creator.username
+    : undefined;
+
   return (
     <Box>
       {/* Full-width page header */}
@@ -449,6 +460,20 @@ const Channel = () => {
               <Text fontSize="lg" color="whiteAlpha.900" lineHeight="1.8">
                 {channel.description}
               </Text>
+
+              {resolvedCreatorName && (
+                <HStack spacing={3} pt={2}>
+                  <Avatar size="sm" name={resolvedCreatorName} bg="whiteAlpha.300" color="navy.900" />
+                  <Text fontSize="sm" color="whiteAlpha.900">
+                    <Text as="span" fontSize="xs" textTransform="uppercase" letterSpacing="0.3em" color="whiteAlpha.700" fontWeight="semibold" mr={2}>
+                      Created by
+                    </Text>
+                    <Text as="span" fontSize="md" fontWeight="semibold" color="white">
+                      {resolvedCreatorName}
+                    </Text>
+                  </Text>
+                </HStack>
+              )}
 
               {channel.tags?.length > 0 && (
                 <HStack spacing={2} wrap="wrap" pt={2}>

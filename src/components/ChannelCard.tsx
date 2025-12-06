@@ -6,32 +6,46 @@ import {
   VStack,
   Icon,
   Text,
+  Avatar,
+  Stack,
 } from '@chakra-ui/react';
 import { Link as RouterLink } from 'react-router-dom';
 import { FiFilter } from 'react-icons/fi';
+import { useAuth } from '../context/useAuth';
 
-interface Tag {
+export interface ChannelTag {
   _id: string;
   name: string;
   color: string;
 }
 
-interface Channel {
+export interface ChannelSummary {
   _id?: string;
   id?: string;
   title: string;
   description: string;
-  tags: Tag[];
+  tags: ChannelTag[];
   memberCount?: number;
+  creator?:
+  | {
+    _id: string;
+    username: string;
+  }
+  | string;
 }
 
 interface ChannelCardProps {
-  channel: Channel;
+  channel: ChannelSummary;
   getFieldColor: (field: string) => string;
 }
 
 const ChannelCard = ({ channel, getFieldColor }: ChannelCardProps) => {
+  const { user } = useAuth();
   const channelId = channel._id || channel.id;
+  const resolvedCreatorName = typeof channel.creator === 'string'
+    ? undefined
+    : channel.creator?.username;
+  const shouldShowCreator = Boolean(user && resolvedCreatorName);
 
   const cardContent = (
     <VStack align="stretch" h="full" spacing={4}>
@@ -87,6 +101,15 @@ const ChannelCard = ({ channel, getFieldColor }: ChannelCardProps) => {
           </Button>
         </HStack>
       </HStack>
+
+      {shouldShowCreator && (
+        <Stack direction="row" spacing={3} align="center" pt={2}>
+          <Avatar size="xs" name={resolvedCreatorName} bg="navy.700" color="white" />
+          <Text fontSize="sm" color="gray.700" fontWeight="semibold">
+            {resolvedCreatorName}
+          </Text>
+        </Stack>
+      )}
     </VStack>
   );
 

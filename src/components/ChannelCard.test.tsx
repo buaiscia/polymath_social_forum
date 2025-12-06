@@ -1,6 +1,7 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { renderWithRouter, screen } from '../test/utils';
 import ChannelCard from './ChannelCard';
+import type { AuthUser } from '../context/authTypes';
 
 describe('ChannelCard', () => {
   const mockGetFieldColor = (field: string) => `academic.${field}`;
@@ -22,7 +23,21 @@ describe('ChannelCard', () => {
       },
     ],
     memberCount: 42,
+    creator: {
+      _id: 'creator-1',
+      username: 'CreatorUser',
+    },
   };
+
+  const authenticatedUser: AuthUser = {
+    _id: 'auth-1',
+    email: 'auth@example.com',
+    username: 'AuthUser',
+  };
+
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
 
   it('renders channel title', () => {
     renderWithRouter(
@@ -108,5 +123,23 @@ describe('ChannelCard', () => {
 
     expect(screen.queryByText('Physics')).not.toBeInTheDocument();
     expect(screen.queryByText('Mathematics')).not.toBeInTheDocument();
+  });
+
+  it('shows creator name when user is authenticated', async () => {
+    renderWithRouter(
+      <ChannelCard channel={mockChannel} getFieldColor={mockGetFieldColor} />,
+      '/',
+      { authUser: authenticatedUser, authToken: 'token' },
+    );
+
+    expect(screen.getByText('CreatorUser')).toBeInTheDocument();
+  });
+
+  it('hides creator details for guests', async () => {
+    renderWithRouter(
+      <ChannelCard channel={mockChannel} getFieldColor={mockGetFieldColor} />,
+    );
+
+    expect(screen.queryByText('CreatorUser')).not.toBeInTheDocument();
   });
 });

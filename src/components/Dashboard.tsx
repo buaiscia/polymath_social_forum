@@ -16,7 +16,7 @@ import {
 } from '@chakra-ui/react';
 import { FiFilter } from 'react-icons/fi';
 import axios from 'axios';
-import ChannelCard from './ChannelCard';
+import ChannelCard, { type ChannelSummary } from './ChannelCard';
 
 interface Tag {
   _id: string;
@@ -24,17 +24,8 @@ interface Tag {
   color: string;
 }
 
-interface Channel {
-  _id?: string;
-  id?: string;
-  title: string;
-  description: string;
-  tags: Tag[]; // Changed from string[] to Tag[]
-  memberCount?: number; // Made optional since backend might not have this
-}
-
 const Dashboard = () => {
-  const [channels, setChannels] = useState<Channel[]>([]);
+  const [channels, setChannels] = useState<ChannelSummary[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);

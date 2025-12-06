@@ -86,11 +86,16 @@ router.post('/', requireAuth, async (req, res) => {
       }
     }
 
-    const authorName = req.user?.username;
+    if (!req.user?._id) {
+      return res.status(401).json({ message: 'Authentication required' });
+    }
+
+    const authorName = req.user.username;
 
     const message = await Message.create({
       channel: channelId,
       parentMessage: parentMessage ? parentMessage._id : undefined,
+      authorId: req.user._id,
       author: authorName,
       content: content.trim(),
     });
