@@ -29,7 +29,7 @@ export const csrfProtection = (allowedOrigins: string[]) => {
     }
 
     if (whitelist.size === 0) {
-      return next();
+      return res.status(403).json({ message: 'CSRF protection misconfigured: no allowed origins set.' });
     }
 
     const origin = extractOrigin(req);

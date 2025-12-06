@@ -53,16 +53,9 @@ export const AuthProvider = ({ children, initialUser = null, hydrateOnMount = tr
     }
 
     const bootstrap = async () => {
-      try {
-        await refreshSession();
-      } catch (error) {
-        if (process.env.NODE_ENV !== 'production') {
-          console.warn('Initial session refresh failed:', error);
-        }
-      } finally {
-        if (!cancelled) {
-          setInitializing(false);
-        }
+      await refreshSession();
+      if (!cancelled) {
+        setInitializing(false);
       }
     };
 

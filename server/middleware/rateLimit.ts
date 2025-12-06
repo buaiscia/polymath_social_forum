@@ -9,7 +9,7 @@ const parseNumber = (value: string | undefined, fallback: number) => {
 };
 
 const windowMs = parseNumber(process.env.AUTH_RATE_LIMIT_WINDOW_MS, 15 * 60 * 1000);
-const maxAttempts = parseNumber(process.env.AUTH_RATE_LIMIT_MAX, 10);
+const maxAttempts = parseNumber(process.env.AUTH_RATE_LIMIT_MAX, 30);
 
 export const authRateLimiter = rateLimit({
   windowMs,

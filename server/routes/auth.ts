@@ -147,7 +147,7 @@ router.post('/refresh', authRateLimiter, async (req, res) => {
   }
 });
 
-router.post('/logout', async (req, res) => {
+router.post('/logout', requireAuth, async (req, res) => {
   try {
     const { refreshToken } = req.cookies ?? {};
     if (refreshToken && typeof refreshToken === 'string') {

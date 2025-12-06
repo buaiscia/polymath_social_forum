@@ -42,7 +42,7 @@ const parseExpiryToMs = (value: string, fallbackMs: number) => {
 const accessTokenMaxAgeMs = parseExpiryToMs(ACCESS_TOKEN_EXPIRES_IN, 15 * 60 * 1000);
 const refreshTokenMaxAgeMs = parseExpiryToMs(REFRESH_TOKEN_EXPIRES_IN, 24 * 60 * 60 * 1000);
 const secureCookie = process.env.NODE_ENV === 'production';
-const sameSitePolicy: 'strict' | 'lax' = secureCookie ? 'lax' : 'strict';
+const sameSitePolicy: 'strict' | 'lax' = 'lax';
 
 const getAccessSecret = () => {
   const secret = process.env.JWT_ACCESS_SECRET;
