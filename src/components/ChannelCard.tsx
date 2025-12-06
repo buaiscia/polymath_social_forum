@@ -30,7 +30,6 @@ export interface ChannelSummary {
   | {
     _id: string;
     username: string;
-    email?: string;
   }
   | string;
 }
@@ -38,14 +37,14 @@ export interface ChannelSummary {
 interface ChannelCardProps {
   channel: ChannelSummary;
   getFieldColor: (field: string) => string;
-  creatorName?: string;
 }
 
-const ChannelCard = ({ channel, getFieldColor, creatorName }: ChannelCardProps) => {
+const ChannelCard = ({ channel, getFieldColor }: ChannelCardProps) => {
   const { user } = useAuth();
   const channelId = channel._id || channel.id;
-  const resolvedCreatorName = creatorName
-    || (typeof channel.creator === 'string' ? undefined : channel.creator?.username);
+  const resolvedCreatorName = typeof channel.creator === 'string'
+    ? undefined
+    : channel.creator?.username;
   const shouldShowCreator = Boolean(user && resolvedCreatorName);
 
   const cardContent = (

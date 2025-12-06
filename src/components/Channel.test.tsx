@@ -26,7 +26,6 @@ const mockChannel = {
   creator: {
     _id: 'creator-1',
     username: 'CreatorUser',
-    email: 'creator@example.com',
   },
 };
 

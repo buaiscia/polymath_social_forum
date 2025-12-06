@@ -38,7 +38,6 @@ interface ChannelType {
   | {
     _id: string;
     username: string;
-    email?: string;
   }
   | string;
 }

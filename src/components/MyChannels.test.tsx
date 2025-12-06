@@ -35,24 +35,16 @@ describe('MyChannels', () => {
               title: 'Quantum Conversations',
               description: 'Discussing the latest in quantum research.',
               tags: [],
-              creator: 'auth-1',
+              creator: {
+                _id: 'auth-1',
+                username: 'AuthUser',
+              },
             },
           ],
         });
       }
       if (url === '/channels/participated') {
         return Promise.resolve({ data: [] });
-      }
-      if (url === '/users') {
-        return Promise.resolve({
-          data: [
-            {
-              _id: 'auth-1',
-              username: 'AuthUser',
-              email: 'auth@example.com',
-            },
-          ],
-        });
       }
       return Promise.resolve({ data: [] });
     });

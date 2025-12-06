@@ -101,38 +101,16 @@ http://localhost:5000/api
 GET /api/channels
 ```
 
-Response:
-
-```json
-[
-  {
-    "_id": "507f1f77bcf86cd799439011",
-    "title": "Quantum Physics Discussion",
-    "description": "A forum for discussing quantum mechanics and related topics",
-    "tags": [
-      {
-        "_id": "507f191e810c19729de860ea",
-        "name": "physics",
-        "color": "#fbbf24"
-      }
-    ],
-    "createdAt": "2025-10-03T12:00:00.000Z"
-  }
-]
-```
-
-**Create Channel** _(requires Authentication)_
-
-```http
 POST /api/channels
 Content-Type: application/json
 
 {
-  "title": "Philosophy of Mind",
-  "description": "Exploring consciousness and mental phenomena",
-  "tags": ["philosophy", "psychology"]
+"title": "Philosophy of Mind",
+"description": "Exploring consciousness and mental phenomena",
+"tags": ["philosophy", "psychology"]
 }
-```
+
+````
 
 Response:
 
@@ -155,7 +133,7 @@ Response:
   ],
   "createdAt": "2025-10-03T12:00:00.000Z"
 }
-```
+````
 
 **Get My Channels** _(requires Authentication)_
 
