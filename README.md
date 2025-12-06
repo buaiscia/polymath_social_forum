@@ -101,16 +101,18 @@ http://localhost:5000/api
 GET /api/channels
 ```
 
+```http
 POST /api/channels
 Content-Type: application/json
+```
 
+```json
 {
-"title": "Philosophy of Mind",
-"description": "Exploring consciousness and mental phenomena",
-"tags": ["philosophy", "psychology"]
+  "title": "Philosophy of Mind",
+  "description": "Exploring consciousness and mental phenomena",
+  "tags": ["philosophy", "psychology"]
 }
-
-````
+```
 
 Response:
 
@@ -133,7 +135,7 @@ Response:
   ],
   "createdAt": "2025-10-03T12:00:00.000Z"
 }
-````
+```
 
 **Get My Channels** _(requires Authentication)_
 
@@ -290,3 +292,7 @@ npm run lint
 ## License
 
 This project is private and not licensed for public use.
+
+```
+
+```

@@ -102,7 +102,7 @@ const ChannelCard = ({ channel, getFieldColor }: ChannelCardProps) => {
         </HStack>
       </HStack>
 
-      {shouldShowCreator && resolvedCreatorName && (
+      {shouldShowCreator && (
         <Stack direction="row" spacing={3} align="center" pt={2}>
           <Avatar size="xs" name={resolvedCreatorName} bg="navy.700" color="white" />
           <Text fontSize="sm" color="gray.700" fontWeight="semibold">

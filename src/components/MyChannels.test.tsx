@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import axios from 'axios';
+import axios, { isAxiosError } from 'axios';
 import MyChannels from './MyChannels';
-import { renderWithRouter, screen, waitFor } from '../test/utils';
+import { renderWithRouter, screen, waitFor, fireEvent } from '../test/utils';
 import type { AuthUser } from '../context/authTypes';
 
 vi.mock('axios');
@@ -60,5 +60,30 @@ describe('MyChannels', () => {
 
     expect(screen.getByText(/created channels/i)).toBeInTheDocument();
     expect(screen.getByText(/participated channels/i)).toBeInTheDocument();
+  });
+
+  it('renders an error state with retry action', async () => {
+    vi.mocked(isAxiosError).mockReturnValue(true);
+    vi.mocked(axios.get).mockRejectedValue({
+      isAxiosError: true,
+      response: {
+        data: { message: 'Server unavailable' },
+      },
+    });
+
+    renderWithRouter(<MyChannels />, '/my-channels', {
+      authUser: authenticatedUser,
+      authToken: 'token',
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Server unavailable')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /try again/i }));
+
+    await waitFor(() => {
+      expect(axios.get).toHaveBeenCalledTimes(4); // initial two + retry pair
+    });
   });
 });

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
-import axios, { type AxiosResponse } from 'axios';
+import axios, { AxiosError, isAxiosError, type AxiosResponse } from 'axios';
 import { useMyChannels } from './useMyChannels';
 import type { ChannelSummary } from '../components/ChannelCard';
 
@@ -37,6 +37,7 @@ describe('useMyChannels', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(isAxiosError).mockReturnValue(false);
   });
 
   it('fetches created and participated channels successfully', async () => {
@@ -67,6 +68,22 @@ describe('useMyChannels', () => {
     expect(result.current.error).toBe('Unable to load your channels right now.');
     expect(result.current.createdChannels).toEqual([]);
     expect(result.current.participatedChannels).toEqual([]);
+  });
+
+  it('uses server error message when available', async () => {
+    vi.mocked(isAxiosError).mockReturnValue(true);
+    const axiosError = {
+      isAxiosError: true,
+      response: {
+        data: { message: 'Service temporarily unavailable' },
+      },
+    } as AxiosError;
+    vi.mocked(axios.get).mockRejectedValue(axiosError);
+
+    const { result } = renderHook(() => useMyChannels(true));
+
+    await waitFor(() => expect(result.current.error).toBe('Service temporarily unavailable'));
+    expect(result.current.isLoading).toBe(false);
   });
 
   it('respects the enabled flag', () => {

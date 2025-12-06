@@ -394,7 +394,7 @@ const Channel = () => {
     );
   }
 
-  const resolvedCreatorName = channel && channel.creator && typeof channel.creator !== 'string'
+  const resolvedCreatorName = channel.creator && typeof channel.creator !== 'string'
     ? channel.creator.username
     : undefined;
 

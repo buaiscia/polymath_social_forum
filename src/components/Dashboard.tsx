@@ -17,7 +17,6 @@ import {
 import { FiFilter } from 'react-icons/fi';
 import axios from 'axios';
 import ChannelCard, { type ChannelSummary } from './ChannelCard';
-import { useAuth } from '../context/useAuth';
 
 interface Tag {
   _id: string;
@@ -31,7 +30,6 @@ const Dashboard = () => {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { user } = useAuth();
 
   // Fetch channels from backend with optional tag filtering
   useEffect(() => {
