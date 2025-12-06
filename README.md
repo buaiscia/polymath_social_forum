@@ -292,7 +292,3 @@ npm run lint
 ## License
 
 This project is private and not licensed for public use.
-
-```
-
-```

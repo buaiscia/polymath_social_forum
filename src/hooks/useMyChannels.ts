@@ -26,7 +26,6 @@ export const useMyChannels = (enabled = true): UseMyChannelsResult => {
 
   const fetchChannels = useCallback(async () => {
     if (!enabled) {
-      if (!isMountedRef.current) return;
       setCreatedChannels([]);
       setParticipatedChannels([]);
       setIsLoading(false);
