@@ -10,6 +10,18 @@ const getTokenFromHeader = (req: Request) => {
   return value;
 };
 
+const getTokenFromCookies = (req: Request) => {
+  const token = req.cookies?.accessToken;
+  if (!token || typeof token !== 'string') {
+    return null;
+  }
+  return token;
+};
+
+const getTokenFromRequest = (req: Request) => {
+  return getTokenFromCookies(req) ?? getTokenFromHeader(req);
+};
+
 const attachUserFromToken = async (token: string, req: Request) => {
   const payload = verifyAccessToken(token);
   const user = await User.findById(payload.sub);
@@ -25,7 +37,7 @@ const attachUserFromToken = async (token: string, req: Request) => {
 
 export const requireAuth = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const token = getTokenFromHeader(req);
+    const token = getTokenFromRequest(req);
     if (!token) {
       return res.status(401).json({ message: 'Authentication required' });
     }
@@ -38,7 +50,7 @@ export const requireAuth = async (req: Request, res: Response, next: NextFunctio
 };
 
 export const optionalAuth = async (req: Request, _res: Response, next: NextFunction) => {
-  const token = getTokenFromHeader(req);
+  const token = getTokenFromRequest(req);
   if (!token) return next();
 
   try {

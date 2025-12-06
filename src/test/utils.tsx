@@ -8,18 +8,18 @@ import type { AuthUser } from '../context/authTypes';
 
 interface CustomRenderOptions extends Omit<RenderOptions, 'wrapper'> {
   authUser?: AuthUser | null;
-  authToken?: string | null;
+  hydrateOnMount?: boolean;
 }
 
 const customRender = (
   ui: ReactElement,
   options?: CustomRenderOptions,
 ) => {
-  const { authUser = null, authToken = null, ...renderOptions } = options ?? {};
+  const { authUser = null, hydrateOnMount = false, ...renderOptions } = options ?? {};
 
   const Wrapper = ({ children }: { children: ReactNode }) => (
     <ChakraProvider theme={theme}>
-      <AuthProvider initialUser={authUser} initialAccessToken={authToken}>
+      <AuthProvider initialUser={authUser} hydrateOnMount={hydrateOnMount}>
         {children}
       </AuthProvider>
     </ChakraProvider>

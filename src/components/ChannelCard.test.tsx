@@ -129,7 +129,7 @@ describe('ChannelCard', () => {
     renderWithRouter(
       <ChannelCard channel={mockChannel} getFieldColor={mockGetFieldColor} />,
       '/',
-      { authUser: authenticatedUser, authToken: 'token' },
+      { authUser: authenticatedUser },
     );
 
     expect(screen.getByText('CreatorUser')).toBeInTheDocument();

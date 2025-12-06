@@ -8,7 +8,6 @@ export interface AuthUser {
 
 export interface AuthResponse {
   user: AuthUser;
-  accessToken: string;
 }
 
 export interface LoginPayload {
@@ -24,7 +23,6 @@ export interface RegisterPayload {
 
 export interface AuthContextValue {
   user: AuthUser | null;
-  accessToken: string | null;
   initializing: boolean;
   login: (payload: LoginPayload) => Promise<void>;
   register: (payload: RegisterPayload) => Promise<void>;
@@ -37,5 +35,5 @@ export interface AuthContextValue {
 export interface AuthProviderProps {
   children: ReactNode;
   initialUser?: AuthUser | null;
-  initialAccessToken?: string | null;
+  hydrateOnMount?: boolean;
 }

@@ -7,6 +7,7 @@ interface UseMyChannelsResult {
   participatedChannels: ChannelSummary[];
   isLoading: boolean;
   error: string | null;
+  requiresReauth: boolean;
   refetch: () => Promise<void>;
 }
 
@@ -15,6 +16,7 @@ export const useMyChannels = (enabled = true): UseMyChannelsResult => {
   const [participatedChannels, setParticipatedChannels] = useState<ChannelSummary[]>([]);
   const [isLoading, setIsLoading] = useState(enabled);
   const [error, setError] = useState<string | null>(null);
+  const [requiresReauth, setRequiresReauth] = useState(false);
   const isMountedRef = useRef(true);
 
   useEffect(() => {
@@ -30,6 +32,7 @@ export const useMyChannels = (enabled = true): UseMyChannelsResult => {
       setParticipatedChannels([]);
       setIsLoading(false);
       setError(null);
+      setRequiresReauth(false);
       return;
     }
 
@@ -45,12 +48,15 @@ export const useMyChannels = (enabled = true): UseMyChannelsResult => {
       setCreatedChannels(createdResponse.data);
       setParticipatedChannels(participatedResponse.data);
       setError(null);
+      setRequiresReauth(false);
     } catch (err) {
       if (!isMountedRef.current) return;
+      const unauthorized = isAxiosError(err) && err.response?.status === 401;
       const message = isAxiosError(err)
         ? err.response?.data?.message || 'Unable to load your channels right now.'
         : 'Unable to load your channels right now.';
       setError(message);
+      setRequiresReauth(unauthorized);
     } finally {
       if (isMountedRef.current) {
         setIsLoading(false);
@@ -67,6 +73,7 @@ export const useMyChannels = (enabled = true): UseMyChannelsResult => {
     participatedChannels,
     isLoading,
     error,
+    requiresReauth,
     refetch: fetchChannels,
   };
 };

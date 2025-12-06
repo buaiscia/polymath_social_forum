@@ -48,7 +48,7 @@ const RegisterTestHarness = () => {
 const renderWithProvider = () =>
   render(
     <ChakraProvider theme={theme}>
-      <AuthProvider>
+      <AuthProvider hydrateOnMount={false}>
         <RegisterTestHarness />
       </AuthProvider>
     </ChakraProvider>,

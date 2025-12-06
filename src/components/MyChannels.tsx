@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import {
   Alert,
   AlertIcon,
@@ -9,6 +10,7 @@ import {
   Spinner,
   Text,
   VStack,
+  useToast,
 } from '@chakra-ui/react';
 import ChannelCard, { type ChannelSummary } from './ChannelCard';
 import { useAuth } from '../context/useAuth';
@@ -51,9 +53,38 @@ const ChannelSection = ({ title, channels, emptyMessage }: SectionProps) => {
 };
 
 const MyChannels = () => {
-  const { user, openLoginModal, openRegisterModal } = useAuth();
+  const toast = useToast();
+  const sessionHandledRef = useRef(false);
+  const { user, openLoginModal, openRegisterModal, logout } = useAuth();
   const isAuthenticated = Boolean(user);
-  const { createdChannels, participatedChannels, isLoading, error, refetch } = useMyChannels(isAuthenticated);
+  const { createdChannels, participatedChannels, isLoading, error, refetch, requiresReauth } = useMyChannels(isAuthenticated);
+
+  useEffect(() => {
+    if (!requiresReauth) {
+      sessionHandledRef.current = false;
+      return;
+    }
+
+    if (sessionHandledRef.current) {
+      return;
+    }
+
+    sessionHandledRef.current = true;
+
+    const handleExpiredSession = async () => {
+      await logout();
+      toast({
+        title: 'Session expired',
+        description: 'Please sign in again to access My Channels.',
+        status: 'warning',
+        duration: 5000,
+        isClosable: true,
+        position: 'top',
+      });
+    };
+
+    void handleExpiredSession();
+  }, [requiresReauth, logout, toast]);
 
   if (!isAuthenticated) {
     return (
