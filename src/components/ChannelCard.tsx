@@ -10,23 +10,23 @@ import {
 import { Link as RouterLink } from 'react-router-dom';
 import { FiFilter } from 'react-icons/fi';
 
-interface Tag {
+export interface ChannelTag {
   _id: string;
   name: string;
   color: string;
 }
 
-interface Channel {
+export interface ChannelSummary {
   _id?: string;
   id?: string;
   title: string;
   description: string;
-  tags: Tag[];
+  tags: ChannelTag[];
   memberCount?: number;
 }
 
 interface ChannelCardProps {
-  channel: Channel;
+  channel: ChannelSummary;
   getFieldColor: (field: string) => string;
 }
 

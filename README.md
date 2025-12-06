@@ -121,7 +121,7 @@ Response:
 ]
 ```
 
-**Create Channel**
+**Create Channel** _(requires Authentication)_
 
 ```http
 POST /api/channels
@@ -155,6 +155,46 @@ Response:
   ],
   "createdAt": "2025-10-03T12:00:00.000Z"
 }
+```
+
+**Get My Channels** _(requires Authentication)_
+
+```http
+GET /api/channels/mine
+```
+
+Response:
+
+```json
+[
+  {
+    "_id": "507f1f77bcf86cd799439012",
+    "title": "Philosophy of Mind",
+    "description": "Exploring consciousness and mental phenomena",
+    "tags": [],
+    "createdAt": "2025-10-03T12:00:00.000Z"
+  }
+]
+```
+
+**Get Participated Channels** _(requires Authentication)_
+
+```http
+GET /api/channels/participated
+```
+
+Response:
+
+```json
+[
+  {
+    "_id": "609f1f77bcf86cd799439099",
+    "title": "Neurodivergent Research",
+    "description": "Threads you have posted in but did not create.",
+    "tags": [],
+    "createdAt": "2025-09-01T12:00:00.000Z"
+  }
+]
 ```
 
 **Get All Tags**
