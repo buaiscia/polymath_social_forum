@@ -13,6 +13,7 @@ import {
 import ChannelCard, { type ChannelSummary } from './ChannelCard';
 import { useAuth } from '../context/useAuth';
 import { useMyChannels } from '../hooks/useMyChannels';
+import { useUserDirectory } from '../hooks/useUserDirectory';
 
 const getFieldColor = (field: string) => `academic.${field}`;
 
@@ -20,9 +21,10 @@ interface SectionProps {
   title: string;
   channels: ChannelSummary[];
   emptyMessage: string;
+  resolveCreatorName: (channel: ChannelSummary) => string | undefined;
 }
 
-const ChannelSection = ({ title, channels, emptyMessage }: SectionProps) => {
+const ChannelSection = ({ title, channels, emptyMessage, resolveCreatorName }: SectionProps) => {
   if (!channels.length) {
     return (
       <VStack align="stretch" spacing={3} bg="white" borderRadius="lg" p={6} borderWidth="1px" borderColor="gray.100">
@@ -39,7 +41,12 @@ const ChannelSection = ({ title, channels, emptyMessage }: SectionProps) => {
       <Heading size="md" color="gray.800">{title}</Heading>
       <SimpleGrid columns={{ base: 1, md: 2, xl: 3 }} spacing={6}>
         {channels.map((channel) => (
-          <ChannelCard key={channel._id || channel.id} channel={channel} getFieldColor={getFieldColor} />
+          <ChannelCard
+            key={channel._id || channel.id}
+            channel={channel}
+            getFieldColor={getFieldColor}
+            creatorName={resolveCreatorName(channel)}
+          />
         ))}
       </SimpleGrid>
     </VStack>
@@ -50,6 +57,17 @@ const MyChannels = () => {
   const { user, openLoginModal, openRegisterModal } = useAuth();
   const isAuthenticated = Boolean(user);
   const { createdChannels, participatedChannels, isLoading, error, refetch } = useMyChannels(isAuthenticated);
+  const { usersById } = useUserDirectory(isAuthenticated);
+
+  const resolveCreatorName = (channel: ChannelSummary) => {
+    if (!isAuthenticated) return undefined;
+    const { creator } = channel;
+    if (!creator) return undefined;
+    if (typeof creator === 'string') {
+      return usersById[creator]?.username;
+    }
+    return creator.username;
+  };
 
   if (!isAuthenticated) {
     return (
@@ -105,11 +123,13 @@ const MyChannels = () => {
               title="Created Channels"
               channels={createdChannels}
               emptyMessage="You haven't created any channels yet. Start one from the Create Channel page."
+              resolveCreatorName={resolveCreatorName}
             />
             <ChannelSection
               title="Participated Channels"
               channels={participatedChannels}
               emptyMessage="Join a conversation to see it listed here."
+              resolveCreatorName={resolveCreatorName}
             />
           </VStack>
         )}

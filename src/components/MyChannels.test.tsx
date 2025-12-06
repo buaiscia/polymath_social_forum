@@ -26,18 +26,36 @@ describe('MyChannels', () => {
   });
 
   it('shows created channels for authenticated users', async () => {
-    vi.mocked(axios.get)
-      .mockResolvedValueOnce({
-        data: [
-          {
-            _id: 'channel-1',
-            title: 'Quantum Conversations',
-            description: 'Discussing the latest in quantum research.',
-            tags: [],
-          },
-        ],
-      })
-      .mockResolvedValueOnce({ data: [] });
+    vi.mocked(axios.get).mockImplementation((url) => {
+      if (url === '/channels/mine') {
+        return Promise.resolve({
+          data: [
+            {
+              _id: 'channel-1',
+              title: 'Quantum Conversations',
+              description: 'Discussing the latest in quantum research.',
+              tags: [],
+              creator: 'auth-1',
+            },
+          ],
+        });
+      }
+      if (url === '/channels/participated') {
+        return Promise.resolve({ data: [] });
+      }
+      if (url === '/users') {
+        return Promise.resolve({
+          data: [
+            {
+              _id: 'auth-1',
+              username: 'AuthUser',
+              email: 'auth@example.com',
+            },
+          ],
+        });
+      }
+      return Promise.resolve({ data: [] });
+    });
 
     renderWithRouter(<MyChannels />, '/my-channels', {
       authUser: authenticatedUser,

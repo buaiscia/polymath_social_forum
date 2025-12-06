@@ -30,7 +30,9 @@ router.get('/', async (req, res) => {
       }
     }
 
-    const channels = await Channel.find(query).populate('tags');
+    const channels = await Channel.find(query)
+      .populate('tags')
+      .populate({ path: 'creator', select: 'username email' });
     res.json(channels);
   } catch (error) {
     console.error('Error fetching channels:', error);
@@ -44,7 +46,9 @@ router.get('/mine', requireAuth, async (req, res) => {
       return res.status(401).json({ message: 'Authentication required' });
     }
 
-    const channels = await Channel.find({ creator: req.user._id }).populate('tags');
+    const channels = await Channel.find({ creator: req.user._id })
+      .populate('tags')
+      .populate({ path: 'creator', select: 'username email' });
     res.json(channels);
   } catch (error) {
     console.error('Error fetching user channels:', error);
@@ -69,7 +73,9 @@ router.get('/participated', requireAuth, async (req, res) => {
     const channels = await Channel.find({
       _id: { $in: participatedChannelIds },
       creator: { $ne: req.user._id },
-    }).populate('tags');
+    })
+      .populate('tags')
+      .populate({ path: 'creator', select: 'username email' });
 
     res.json(channels);
   } catch (error) {
@@ -85,7 +91,9 @@ router.get('/:id', async (req, res) => {
       return res.status(400).json({ message: 'Invalid channel ID' });
     }
 
-    const channel = await Channel.findById(req.params.id).populate('tags');
+    const channel = await Channel.findById(req.params.id)
+      .populate('tags')
+      .populate({ path: 'creator', select: 'username email' });
 
     if (!channel) {
       return res.status(404).json({ message: 'Channel not found' });
@@ -153,7 +161,9 @@ router.post('/', requireAuth, async (req, res) => {
       creator: req.user._id,
     });
 
-    const populatedChannel = await Channel.findById(channel._id).populate('tags');
+    const populatedChannel = await Channel.findById(channel._id)
+      .populate('tags')
+      .populate({ path: 'creator', select: 'username email' });
     res.status(201).json(populatedChannel);
   } catch (error) {
     console.error('Error creating channel:', error);
