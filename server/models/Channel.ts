@@ -9,6 +9,7 @@ const channelSchema = new mongoose.Schema({
   title: { type: String, required: true },
   description: { type: String, required: true },
   tags: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Tag' }],
+  creator: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
   createdAt: { type: Date, default: Date.now },
 });
 

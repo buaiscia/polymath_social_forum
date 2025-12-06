@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   SimpleGrid,
@@ -16,7 +16,9 @@ import {
 } from '@chakra-ui/react';
 import { FiFilter } from 'react-icons/fi';
 import axios from 'axios';
-import ChannelCard from './ChannelCard';
+import ChannelCard, { type ChannelSummary } from './ChannelCard';
+import { useAuth } from '../context/useAuth';
+import { useUserDirectory } from '../hooks/useUserDirectory';
 
 interface Tag {
   _id: string;
@@ -24,21 +26,25 @@ interface Tag {
   color: string;
 }
 
-interface Channel {
-  _id?: string;
-  id?: string;
-  title: string;
-  description: string;
-  tags: Tag[]; // Changed from string[] to Tag[]
-  memberCount?: number; // Made optional since backend might not have this
-}
-
 const Dashboard = () => {
-  const [channels, setChannels] = useState<Channel[]>([]);
+  const [channels, setChannels] = useState<ChannelSummary[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { user } = useAuth();
+  const { usersById } = useUserDirectory(Boolean(user));
+
+  const resolveCreatorName = useCallback(
+    (creator: ChannelSummary['creator']) => {
+      if (!user || !creator) return undefined;
+      if (typeof creator === 'string') {
+        return usersById[creator]?.username;
+      }
+      return creator.username;
+    },
+    [user, usersById],
+  );
 
   // Fetch channels from backend with optional tag filtering
   useEffect(() => {
@@ -199,6 +205,7 @@ const Dashboard = () => {
             key={channel._id || channel.id || `channel-${index}`}
             channel={channel}
             getFieldColor={getFieldColor}
+            creatorName={resolveCreatorName(channel.creator)}
           />
         ))}
       </SimpleGrid>

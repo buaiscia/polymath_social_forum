@@ -15,12 +15,28 @@ import {
   Divider,
   Portal,
 } from '@chakra-ui/react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { FiSearch, FiPlus, FiUser } from 'react-icons/fi';
 import { useAuth } from '../context/useAuth';
 
 const SideNav = () => {
   const { user, logout, openLoginModal, openRegisterModal } = useAuth();
+  const location = useLocation();
+
+  const isExploreActive = location.pathname === '/' || location.pathname.startsWith('/channels');
+  const isCreateActive = location.pathname === '/create';
+  const isMyChannelsActive = location.pathname === '/my-channels';
+
+  const activeButtonStyles = {
+    bg: 'navy.800',
+    color: 'white',
+    _hover: { bg: 'navy.700' },
+  } as const;
+
+  const inactiveButtonStyles = {
+    color: 'gray.700',
+    _hover: { bg: 'gray.100' },
+  } as const;
 
   return (
     <Box w="280px" p={6} bg="white" borderRight="1px" borderColor="gray.200" h="calc(100vh - 76px)" position="fixed" left={0}>
@@ -36,9 +52,8 @@ const SideNav = () => {
               variant="ghost"
               justifyContent="flex-start"
               leftIcon={<Icon as={FiSearch} />}
-              bg="navy.800"
-              color="white"
-              _hover={{ bg: 'navy.700' }}
+              aria-current={isExploreActive ? 'page' : undefined}
+              {...(isExploreActive ? activeButtonStyles : inactiveButtonStyles)}
             >
               Explore Channels
             </Button>
@@ -50,8 +65,8 @@ const SideNav = () => {
                   variant="ghost"
                   justifyContent="flex-start"
                   leftIcon={<Icon as={FiPlus} />}
-                  color="gray.700"
-                  _hover={{ bg: 'gray.100' }}
+                  aria-current={isCreateActive ? 'page' : undefined}
+                  {...(isCreateActive ? activeButtonStyles : inactiveButtonStyles)}
                 >
                   Create Channel
                 </Button>
@@ -61,8 +76,8 @@ const SideNav = () => {
                   variant="ghost"
                   justifyContent="flex-start"
                   leftIcon={<Icon as={FiUser} />}
-                  color="gray.700"
-                  _hover={{ bg: 'gray.100' }}
+                  aria-current={isMyChannelsActive ? 'page' : undefined}
+                  {...(isMyChannelsActive ? activeButtonStyles : inactiveButtonStyles)}
                 >
                   My Channels
                 </Button>
