@@ -14,6 +14,7 @@ import {
   verifyRefreshToken,
 } from '../utils/tokens';
 import { requireAuth } from '../middleware/auth';
+import { authRateLimiter } from '../middleware/rateLimit';
 
 const router = express.Router();
 
@@ -30,7 +31,7 @@ const sendAuthResponse = (res: Response, user: InstanceType<typeof User>, status
   return res.status(status).json({ user: safeUser });
 };
 
-router.post('/register', async (req, res) => {
+router.post('/register', authRateLimiter, async (req, res) => {
   let createdUserId: string | null = null;
   try {
     const { email, username, password } = req.body;
@@ -86,7 +87,7 @@ router.post('/register', async (req, res) => {
   }
 });
 
-router.post('/login', async (req, res) => {
+router.post('/login', authRateLimiter, async (req, res) => {
   try {
     const { identifier, password } = req.body;
 
@@ -119,7 +120,7 @@ router.post('/login', async (req, res) => {
   }
 });
 
-router.post('/refresh', async (req, res) => {
+router.post('/refresh', authRateLimiter, async (req, res) => {
   try {
     const { refreshToken } = req.cookies;
     if (!refreshToken || typeof refreshToken !== 'string') {
