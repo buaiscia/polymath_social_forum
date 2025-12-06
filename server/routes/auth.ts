@@ -20,6 +20,8 @@ const router = express.Router();
 
 const normaliseEmail = (email: string) => email.trim().toLowerCase();
 const normaliseUsername = (username: string) => username.trim();
+const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const buildUsernamePattern = (username: string) => new RegExp(`^${escapeRegex(username)}$`, 'i');
 const getErrorDetails = (error: unknown) => (error instanceof Error ? error.message : 'Unknown error');
 
 const sendAuthResponse = (res: Response, user: InstanceType<typeof User>, status = 200) => {
@@ -52,13 +54,14 @@ router.post('/register', authRateLimiter, async (req, res) => {
 
     const emailValue = normaliseEmail(email);
     const usernameValue = normaliseUsername(username);
+    const usernamePattern = buildUsernamePattern(usernameValue);
 
     const existingEmail = await User.exists({ email: emailValue });
     if (existingEmail) {
       return res.status(409).json({ message: 'Email already in use.' });
     }
 
-    const existingUsername = await User.exists({ username: usernameValue });
+    const existingUsername = await User.exists({ username: usernamePattern });
     if (existingUsername) {
       return res.status(409).json({ message: 'Username already in use.' });
     }
@@ -101,7 +104,7 @@ router.post('/login', authRateLimiter, async (req, res) => {
 
     const search = validator.isEmail(identifier)
       ? { email: normaliseEmail(identifier) }
-      : { username: normaliseUsername(identifier) };
+      : { username: buildUsernamePattern(normaliseUsername(identifier)) };
 
     const user = await User.findOne(search);
     if (!user) {
