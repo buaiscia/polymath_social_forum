@@ -2,7 +2,7 @@ import express from 'express';
 import mongoose from 'mongoose';
 import { Channel, Tag } from '../models/Channel';
 import { Message } from '../models/Message';
-import { requireAuth } from '../middleware/auth';
+import { optionalAuth, requireAuth } from '../middleware/auth';
 
 const router = express.Router();
 
@@ -172,7 +172,7 @@ router.post('/', requireAuth, async (req, res) => {
 });
 
 // Get messages for a specific channel
-router.get('/:id/messages', async (req, res) => {
+router.get('/:id/messages', optionalAuth, async (req, res) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
       return res.status(400).json({ message: 'Invalid channel ID' });
@@ -183,7 +183,27 @@ router.get('/:id/messages', async (req, res) => {
       return res.status(404).json({ message: 'Channel not found' });
     }
 
-    const messages = await Message.find({ channel: req.params.id })
+    const { includeDrafts } = req.query;
+
+    if (includeDrafts && includeDrafts !== 'true') {
+      return res.status(400).json({ message: 'includeDrafts must be "true" when provided' });
+    }
+
+    if (includeDrafts === 'true' && !req.user?._id) {
+      return res.status(401).json({ message: 'Authentication required to include drafts' });
+    }
+
+    const baseFilter = { channel: req.params.id };
+    const messagesQuery = includeDrafts === 'true' && req.user?._id
+      ? {
+        $or: [
+          { ...baseFilter, isDraft: false },
+          { ...baseFilter, isDraft: true, authorId: req.user._id },
+        ],
+      }
+      : { ...baseFilter, isDraft: false };
+
+    const messages = await Message.find(messagesQuery)
       .sort({ createdAt: 1 });
 
     res.json(messages);
@@ -200,10 +220,14 @@ router.post('/:id/messages', requireAuth, async (req, res) => {
       return res.status(400).json({ message: 'Invalid channel ID' });
     }
 
-    const { content, parentMessageId } = req.body;
+    const { content, parentMessageId, isDraft } = req.body;
 
     if (!content || typeof content !== 'string' || content.trim().length === 0) {
       return res.status(400).json({ message: 'Message content is required' });
+    }
+
+    if (isDraft !== undefined && typeof isDraft !== 'boolean') {
+      return res.status(400).json({ message: 'isDraft must be a boolean when provided' });
     }
 
     const channel = await Channel.findById(req.params.id);
@@ -242,6 +266,7 @@ router.post('/:id/messages', requireAuth, async (req, res) => {
       authorId: req.user._id,
       author: authorName,
       content: content.trim(),
+      isDraft: Boolean(isDraft),
     });
 
     res.status(201).json(message);
