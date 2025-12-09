@@ -868,6 +868,105 @@ describe('Channel messaging flow', () => {
     });
   });
 
+  it('shows draft-specific delete copy for draft messages', async () => {
+    const ownDraft: MockMessage = {
+      _id: 'draft-to-delete',
+      channel: mockChannel._id,
+      author: mockAuthUser.username,
+      authorId: mockAuthUser._id,
+      content: 'Draft slated for deletion',
+      createdAt: '2025-08-09T03:00:00.000Z',
+      isDraft: true,
+    };
+
+    mockGet([ownDraft]);
+    renderChannel();
+
+    await waitFor(() => {
+      expect(screen.getByText('Draft slated for deletion')).toBeInTheDocument();
+    });
+
+    const [draftMessageNode] = screen.getAllByText('Draft slated for deletion', { selector: 'p' });
+    expect(draftMessageNode).toBeDefined();
+    const draftCard = draftMessageNode?.closest('[data-testid="conversation-message"]');
+    expect(draftCard).not.toBeNull();
+    if (!draftCard) return;
+
+    fireEvent.click(within(draftCard as HTMLElement).getByRole('button', { name: /^delete$/i }));
+
+    const dialog = await screen.findByRole('alertdialog', { name: /delete message/i });
+    expect(within(dialog).getByText('This action will permanently delete your draft message.')).toBeInTheDocument();
+  });
+
+  it('warns about replies becoming read-only when deleting published messages with replies', async () => {
+    const ownedRoot: MockMessage = {
+      _id: 'owned-root-delete',
+      channel: mockChannel._id,
+      author: mockAuthUser.username,
+      authorId: mockAuthUser._id,
+      content: 'Root with replies',
+      createdAt: '2025-08-09T03:00:00.000Z',
+    };
+
+    const childReply: MockMessage = {
+      _id: 'reply-stays',
+      channel: mockChannel._id,
+      author: 'Peer',
+      authorId: 'peer-1',
+      content: 'Reply that will remain',
+      createdAt: '2025-08-09T03:05:00.000Z',
+      parentMessage: ownedRoot._id,
+    };
+
+    mockGet([ownedRoot, childReply]);
+    renderChannel();
+
+    await waitFor(() => {
+      expect(screen.getByText('Root with replies')).toBeInTheDocument();
+      expect(screen.getByText('Reply that will remain')).toBeInTheDocument();
+    });
+
+    const rootCard = screen.getByText('Root with replies').closest('[data-testid="conversation-message"]');
+    expect(rootCard).not.toBeNull();
+    if (!rootCard) return;
+
+    fireEvent.click(within(rootCard as HTMLElement).getByRole('button', { name: /^delete$/i }));
+
+    const dialog = await screen.findByRole('alertdialog', { name: /delete message/i });
+    expect(
+      within(dialog).getByText(
+        'This action removes your message permanently. Any existing replies will stay visible but become read-only threads.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('shows the general permanent delete copy when no replies exist', async () => {
+    const ownedRoot: MockMessage = {
+      _id: 'owned-root-lone',
+      channel: mockChannel._id,
+      author: mockAuthUser.username,
+      authorId: mockAuthUser._id,
+      content: 'Solo root message',
+      createdAt: '2025-08-09T03:00:00.000Z',
+    };
+
+    mockGet([ownedRoot]);
+    renderChannel();
+
+    await waitFor(() => {
+      expect(screen.getByText('Solo root message')).toBeInTheDocument();
+    });
+
+    const rootCard = screen.getByText('Solo root message').closest('[data-testid="conversation-message"]');
+    expect(rootCard).not.toBeNull();
+    if (!rootCard) return;
+
+    fireEvent.click(within(rootCard as HTMLElement).getByRole('button', { name: /^delete$/i }));
+
+    const dialog = await screen.findByRole('alertdialog', { name: /delete message/i });
+    expect(within(dialog).getByText('This action removes your message permanently.')).toBeInTheDocument();
+  });
+
   it('deletes a message and keeps replies as orphaned read-only threads', async () => {
     const ownedRoot: MockMessage = {
       _id: 'owned-root',

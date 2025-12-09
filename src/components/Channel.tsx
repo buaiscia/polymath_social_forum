@@ -900,6 +900,9 @@ const Channel = () => {
   const isReplySubmitDisabled = isReplyContentEmpty || isReplySubmitting || isSavingReplyDraft;
   const isReplySaveDisabled = isReplyContentEmpty || isSavingReplyDraft || isReplySubmitting;
   const hasMessages = Boolean(primaryMessage || otherThreads.length);
+  const pendingDeletionHasReplies = messagePendingDeletion
+    ? messages.some((message) => message.parentMessage === messagePendingDeletion._id)
+    : false;
 
   const renderReplyForm = () => {
     if (!isAuthenticated) {
@@ -1138,8 +1141,11 @@ const Channel = () => {
             </AlertDialogHeader>
             <AlertDialogBody>
               <Text mb={3}>
-                This action removes your message permanently. Any existing replies will stay visible but
-                become read-only threads.
+                {messagePendingDeletion?.isDraft
+                  ? 'This action will permanently delete your draft message.'
+                  : pendingDeletionHasReplies
+                    ? 'This action removes your message permanently. Any existing replies will stay visible but become read-only threads.'
+                    : 'This action removes your message permanently.'}
               </Text>
               {messagePendingDeletion && (
                 <Box p={3} bg="gray.50" borderRadius="md" borderWidth="1px" borderColor="gray.200">
