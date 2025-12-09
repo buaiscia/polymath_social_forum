@@ -148,6 +148,37 @@ describe('Message drafts', () => {
     expect(response.body.isDraft).toBe(false);
   });
 
+  it('prevents publishing draft replies whose parent is orphaned or missing', async () => {
+    const parentMessageId = '84b84b84b84b84b84b84b84b';
+    const replyDraft = buildMessageDoc({ parentMessage: parentMessageId, isOrphaned: false });
+    mockMessageFindById
+      .mockResolvedValueOnce(replyDraft)
+      .mockResolvedValueOnce({ _id: parentMessageId, isOrphaned: true });
+
+    const response = await request(app)
+      .patch(`/messages/${validMessageId}`)
+      .send({ publish: true });
+
+    expect(response.status).toBe(400);
+    expect(response.body.message).toMatch(/orphaned/i);
+    expect(replyDraft.isDraft).toBe(true);
+    expect(mockMessageFindById).toHaveBeenNthCalledWith(2, parentMessageId);
+  });
+
+  it('rejects publishing drafts already marked orphaned without reloading parent', async () => {
+    const parentMessageId = '94b94b94b94b94b94b94b94b';
+    const replyDraft = buildMessageDoc({ parentMessage: parentMessageId, isOrphaned: true });
+    mockMessageFindById.mockResolvedValueOnce(replyDraft);
+
+    const response = await request(app)
+      .patch(`/messages/${validMessageId}`)
+      .send({ publish: true });
+
+    expect(response.status).toBe(400);
+    expect(response.body.message).toMatch(/orphaned/i);
+    expect(mockMessageFindById).toHaveBeenCalledTimes(1);
+  });
+
   it('increments the version only when editing published content', async () => {
     const publishedMessage = buildMessageDoc({ isDraft: false, __v: 5 });
     mockMessageFindById.mockResolvedValue(publishedMessage);

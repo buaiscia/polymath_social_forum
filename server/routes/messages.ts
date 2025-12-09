@@ -205,6 +205,18 @@ router.patch('/:id', requireAuth, async (req, res) => {
       if (!message.isDraft) {
         return res.status(400).json({ message: 'Message is already published' });
       }
+
+      if (message.isOrphaned) {
+        return res.status(400).json({ message: 'Cannot publish a reply to an orphaned message' });
+      }
+
+      if (message.parentMessage) {
+        const parentMessage = await Message.findById(message.parentMessage);
+        if (!parentMessage || parentMessage.isOrphaned) {
+          return res.status(400).json({ message: 'Cannot publish a reply to an orphaned message' });
+        }
+      }
+
       message.isDraft = false;
       const now = new Date();
       (message as typeof message & { createdAt: Date }).createdAt = now;

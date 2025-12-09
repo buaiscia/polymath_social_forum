@@ -468,14 +468,12 @@ const Channel = () => {
     setInlineMessageSavingId(null);
   };
 
-
   const toggleThreadVisibility = (messageId: string) => {
     setCollapsedThreadIds((prev) => ({
       ...prev,
       [messageId]: !prev[messageId],
     }));
   };
-
 
   const handleRootSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -665,11 +663,6 @@ const Channel = () => {
       setActiveDraftId(savedMessage._id);
       lastKnownDraftIdRef.current = savedMessage._id;
       setComposerMode('draft');
-      setEditingMessageId(savedMessage._id);
-      setEditingMessageContent(savedMessage.content);
-      setEditingMessageParentId(savedMessage.parentMessage ?? null);
-      setIsEditingDraft(true);
-      setEditingMessageError(null);
       toast({
         title: 'Draft saved',
         status: 'success',
@@ -719,7 +712,7 @@ const Channel = () => {
           setRootMessage(trimmedContent);
           setActiveDraftId(response.data._id);
           lastKnownDraftIdRef.current = response.data._id;
-        } else if (editingMessageParentId) {
+        } else {
           replyDraftMetaRef.current[editingMessageParentId] = {
             id: response.data._id,
             content: response.data.content,
