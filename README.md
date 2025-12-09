@@ -189,6 +189,76 @@ GET /api/tags
 
 Response:
 
+#### Messages
+
+**List Messages**
+
+```http
+GET /api/messages?channelId=:channelId&includeDrafts=true
+```
+
+- `channelId` (optional) limits results to a specific channel.
+- `includeDrafts=true` (optional) returns your own drafts alongside published messages and requires authentication; otherwise only published messages are returned.
+
+Response:
+
+```json
+[
+  {
+    "_id": "64b64b64b64b64b64b64b64b",
+    "channel": "507f1f77bcf86cd799439012",
+    "author": "Scholar",
+    "authorId": "609f1f77bcf86cd799439099",
+    "content": "Draft exploration.",
+    "isDraft": true,
+    "createdAt": "2025-10-05T09:30:00.000Z",
+    "updatedAt": "2025-10-05T09:45:00.000Z",
+    "parentMessage": null
+  }
+]
+```
+
+**Create Message or Draft** _(requires Authentication)_
+
+```http
+POST /api/messages
+Content-Type: application/json
+```
+
+```json
+{
+  "channelId": "507f1f77bcf86cd799439012",
+  "content": "Publishing soon...",
+  "parentMessageId": null,
+  "isDraft": true
+}
+```
+
+Response includes the stored message with `isDraft` state. Drafts require non-empty content just like published messages.
+
+**Update / Publish Message** _(requires Authentication)_
+
+```http
+PATCH /api/messages/:id
+Content-Type: application/json
+```
+
+Supported payload fields:
+
+- `content` — updates body text (draft or published).
+- `isDraft: true` — saves changes while keeping the message a draft.
+- `publish: true` or `isDraft: false` — publishes an existing draft. Publishing refreshes `createdAt` to the publish time and cannot be reversed.
+
+Only the original author can update or publish their message.
+
+**Channel Messages**
+
+```http
+GET /api/channels/:id/messages?includeDrafts=true
+```
+
+Behaves like `GET /api/messages` but scoped to a single channel. `includeDrafts=true` again requires authentication and returns the requester’s drafts alongside published posts.
+
 ```json
 [
   {
