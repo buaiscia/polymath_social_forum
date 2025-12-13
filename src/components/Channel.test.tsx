@@ -545,6 +545,47 @@ describe('Channel messaging flow', () => {
     });
   });
 
+  it('resets inline editing state after canceling changes on a published message', async () => {
+    const ownedRoot: MockMessage = {
+      _id: 'owned-root-cancel',
+      channel: mockChannel._id,
+      author: mockAuthUser.username,
+      authorId: mockAuthUser._id,
+      content: 'Cancelable root insight.',
+      createdAt: '2025-08-09T02:05:00.000Z',
+    };
+
+    mockGet([ownedRoot]);
+    renderChannel();
+
+    await waitFor(() => {
+      expect(screen.getByText('Cancelable root insight.')).toBeInTheDocument();
+    });
+
+    const rootCard = screen
+      .getByText('Cancelable root insight.')
+      .closest('[data-testid="conversation-message"]') as HTMLElement | null;
+    expect(rootCard).not.toBeNull();
+    if (!rootCard) return;
+
+    fireEvent.click(within(rootCard).getByRole('button', { name: /^edit$/i }));
+
+    const inlineTextarea = within(rootCard).getByRole('textbox');
+    fireEvent.change(inlineTextarea, { target: { value: 'Temp rewrite' } });
+
+    fireEvent.click(within(rootCard).getByRole('button', { name: /^cancel$/i }));
+
+    await waitFor(() => {
+      expect(within(rootCard).queryByRole('textbox')).toBeNull();
+      expect(within(rootCard).getByText('Cancelable root insight.')).toBeInTheDocument();
+    });
+
+    fireEvent.click(within(rootCard).getByRole('button', { name: /^edit$/i }));
+
+    const reopenedTextarea = within(rootCard).getByRole('textbox');
+    expect(reopenedTextarea).toHaveValue('Cancelable root insight.');
+  });
+
   it('saves a reply draft without closing the composer', async () => {
     mockGet([initialMessage]);
 

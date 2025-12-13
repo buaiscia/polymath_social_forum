@@ -118,7 +118,7 @@ const buildThreadStructure = (allMessages: MessageType[]) => {
 
     const earliestChild = children[0];
     const referenceDate = earliestChild?.createdAt ? new Date(earliestChild.createdAt).getTime() : Date.now();
-    const placeholderTimestamp = new Date(referenceDate - 1).toISOString();
+    const placeholderTimestamp = new Date(referenceDate - 1000).toISOString();
     const placeholderId = `placeholder-${parentId}`;
     const placeholderMessage: MessageType = {
       _id: placeholderId,
@@ -421,12 +421,31 @@ const Channel = () => {
     setReplyMessage(event.target.value);
   };
 
+  const clearReplyDraftMetaEntry = (parentId?: string | null) => {
+    if (parentId && replyDraftMetaRef.current[parentId]) {
+      delete replyDraftMetaRef.current[parentId];
+    }
+  };
+
   const handleReplyCancel = () => {
+    const previousParentId = replyParentId;
     setReplyParentId(null);
     setReplyMessage('');
     setReplySubmitError(null);
     setActiveReplyDraftId(null);
+    clearReplyDraftMetaEntry(previousParentId);
   };
+
+  useEffect(() => {
+    const draftIds = new Set(
+      messages.filter((message) => message.isDraft).map((message) => message._id),
+    );
+    Object.entries(replyDraftMetaRef.current).forEach(([parentId, meta]) => {
+      if (!meta || !draftIds.has(meta.id)) {
+        delete replyDraftMetaRef.current[parentId];
+      }
+    });
+  }, [messages]);
 
   const handleReplyToggle = (messageId: string) => {
     if (!user) {
@@ -1069,7 +1088,7 @@ const Channel = () => {
             isLoading={isInlineSaving}
             isDisabled={disableInlineActions}
           >
-            {isEditingDraft ? 'Save draft' : 'Save changes'}
+            {isEditingDraft ? 'Save draft' : 'Publish'}
           </Button>
           {message.isDraft && (
             <Button

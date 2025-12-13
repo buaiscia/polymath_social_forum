@@ -194,7 +194,7 @@ Response:
 **List Messages**
 
 ```http
-GET /api/messages?channelId=:channelId&includeDrafts=true
+GET /api/messages?channelId={channelId}&includeDrafts=true
 ```
 
 - `channelId` (optional) limits results to a specific channel.
