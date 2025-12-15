@@ -367,7 +367,7 @@ describe('Channel messaging flow', () => {
       channel: mockChannel._id,
       author: mockAuthUser.username,
       authorId: mockAuthUser._id,
-      content: 'Publish me',
+      content: '<p>Publish me</p>',
       createdAt: '2025-08-09T00:30:00.000Z',
       isDraft: true,
     };
@@ -387,7 +387,7 @@ describe('Channel messaging flow', () => {
 
     await waitFor(() => {
       expect(axios.patch).toHaveBeenCalledWith(`/messages/${existingDraft._id}`, {
-        content: 'Publish me',
+        content: '<p>Publish me</p>',
         publish: true,
       });
       expect(screen.getByPlaceholderText(/share your thoughts/i)).toHaveValue('');
@@ -927,7 +927,7 @@ describe('Channel messaging flow', () => {
       expect(screen.getByText('Draft slated for deletion')).toBeInTheDocument();
     });
 
-    const [draftMessageNode] = screen.getAllByText('Draft slated for deletion', { selector: 'p' });
+    const [draftMessageNode] = screen.getAllByText('Draft slated for deletion');
     expect(draftMessageNode).toBeDefined();
     const draftCard = draftMessageNode?.closest('[data-testid="conversation-message"]');
     expect(draftCard).not.toBeNull();

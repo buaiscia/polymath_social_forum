@@ -21,13 +21,15 @@ import {
   Tag,
   TagLabel,
   Text,
-  Textarea,
   VStack,
   useToast,
 } from '@chakra-ui/react';
 import { Link as RouterLink, useParams } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/useAuth';
+import RichTextEditor from './RichTextEditor';
+import RichTextRenderer from './RichTextRenderer';
+import { getPlainTextFromHtml, isRichTextEmpty, sanitizeRichText } from '../utils/sanitizeHtml';
 
 interface TagType {
   _id: string;
@@ -337,7 +339,7 @@ const Channel = () => {
 
     if (existingDraft) {
       if (lastKnownDraftIdRef.current !== existingDraft._id) {
-        setRootMessage(existingDraft.content);
+        setRootMessage(sanitizeRichText(existingDraft.content));
       }
       lastKnownDraftIdRef.current = existingDraft._id;
       setActiveDraftId(existingDraft._id);
@@ -371,7 +373,7 @@ const Channel = () => {
     if (existingDraft) {
       const cached = replyDraftMetaRef.current[replyParentId];
       if (!cached || cached.id !== existingDraft._id || cached.content !== existingDraft.content) {
-        setReplyMessage(existingDraft.content);
+        setReplyMessage(sanitizeRichText(existingDraft.content));
         replyDraftMetaRef.current[replyParentId] = {
           id: existingDraft._id,
           content: existingDraft.content,
@@ -411,14 +413,16 @@ const Channel = () => {
   const canMessageReceiveReplies = (message?: MessageType | null) =>
     Boolean(message && !message.isDraft && !message.isOrphaned && !message.isPlaceholder);
 
-  const handleRootMessageChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
-    if (rootSubmitError) setRootSubmitError(null);
-    setRootMessage(event.target.value);
+  const handleRootEditorChange = (nextHtml: string) => {
+    const sanitized = sanitizeRichText(nextHtml);
+    if (rootSubmitError && !isRichTextEmpty(sanitized)) setRootSubmitError(null);
+    setRootMessage(sanitized);
   };
 
-  const handleReplyMessageChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
-    if (replySubmitError) setReplySubmitError(null);
-    setReplyMessage(event.target.value);
+  const handleReplyEditorChange = (nextHtml: string) => {
+    const sanitized = sanitizeRichText(nextHtml);
+    if (replySubmitError && !isRichTextEmpty(sanitized)) setReplySubmitError(null);
+    setReplyMessage(sanitized);
   };
 
   const clearReplyDraftMetaEntry = (parentId?: string | null) => {
@@ -472,7 +476,7 @@ const Channel = () => {
     }
 
     setEditingMessageId(message._id);
-    setEditingMessageContent(message.content);
+    setEditingMessageContent(sanitizeRichText(message.content));
     setEditingMessageParentId(message.parentMessage ?? null);
     setIsEditingDraft(Boolean(message.isDraft));
     setEditingMessageError(null);
@@ -496,9 +500,9 @@ const Channel = () => {
 
   const handleRootSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const trimmedContent = rootMessage.trim();
+    const sanitizedContent = sanitizeRichText(rootMessage);
 
-    if (!id || !trimmedContent) {
+    if (!id || isRichTextEmpty(sanitizedContent)) {
       return;
     }
 
@@ -513,14 +517,14 @@ const Channel = () => {
 
       if (activeDraftId) {
         const response = await axios.patch<MessageType>(`/messages/${activeDraftId}`, {
-          content: trimmedContent,
+          content: sanitizedContent,
           publish: true,
         });
         upsertMessage(response.data);
       } else {
         const response = await axios.post<MessageType>('/messages', {
           channelId: id,
-          content: trimmedContent,
+          content: sanitizedContent,
         });
         upsertMessage(response.data);
       }
@@ -545,9 +549,9 @@ const Channel = () => {
 
   const handleReplySubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const trimmedContent = replyMessage.trim();
+    const sanitizedContent = sanitizeRichText(replyMessage);
 
-    if (!id || !replyParentId || !trimmedContent) {
+    if (!id || !replyParentId || isRichTextEmpty(sanitizedContent)) {
       return;
     }
 
@@ -564,13 +568,13 @@ const Channel = () => {
       let response: { data: MessageType };
       if (activeReplyDraftId) {
         response = await axios.patch<MessageType>(`/messages/${activeReplyDraftId}`, {
-          content: trimmedContent,
+          content: sanitizedContent,
           publish: true,
         });
       } else {
         response = await axios.post<MessageType>('/messages', {
           channelId: id,
-          content: trimmedContent,
+          content: sanitizedContent,
           parentMessageId: replyParentId,
         });
       }
@@ -593,9 +597,9 @@ const Channel = () => {
 
   const handleReplySaveDraft = async (options: { closeAfterSave?: boolean } = {}) => {
     const { closeAfterSave = false } = options;
-    const trimmedContent = replyMessage.trim();
+    const sanitizedContent = sanitizeRichText(replyMessage);
 
-    if (!id || !replyParentId || !trimmedContent) {
+    if (!id || !replyParentId || isRichTextEmpty(sanitizedContent)) {
       return;
     }
 
@@ -610,14 +614,14 @@ const Channel = () => {
       let savedMessage: MessageType;
       if (activeReplyDraftId) {
         const response = await axios.patch<MessageType>(`/messages/${activeReplyDraftId}`, {
-          content: trimmedContent,
+          content: sanitizedContent,
           isDraft: true,
         });
         savedMessage = response.data;
       } else {
         const response = await axios.post<MessageType>('/messages', {
           channelId: id,
-          content: trimmedContent,
+          content: sanitizedContent,
           parentMessageId: replyParentId,
           isDraft: true,
         });
@@ -648,9 +652,9 @@ const Channel = () => {
   };
 
   const handleSaveDraft = async () => {
-    const trimmedContent = rootMessage.trim();
+    const sanitizedContent = sanitizeRichText(rootMessage);
 
-    if (!id || !trimmedContent) {
+    if (!id || isRichTextEmpty(sanitizedContent)) {
       return;
     }
 
@@ -665,14 +669,14 @@ const Channel = () => {
       let savedMessage: MessageType;
       if (activeDraftId) {
         const response = await axios.patch<MessageType>(`/messages/${activeDraftId}`, {
-          content: trimmedContent,
+          content: sanitizedContent,
           isDraft: true,
         });
         savedMessage = response.data;
       } else {
         const response = await axios.post<MessageType>('/messages', {
           channelId: id,
-          content: trimmedContent,
+          content: sanitizedContent,
           isDraft: true,
         });
         savedMessage = response.data;
@@ -701,9 +705,9 @@ const Channel = () => {
       return;
     }
 
-    const trimmedContent = editingMessageContent.trim();
+    const sanitizedContent = sanitizeRichText(editingMessageContent);
 
-    if (!trimmedContent) {
+    if (isRichTextEmpty(sanitizedContent)) {
       setEditingMessageError('Message cannot be empty.');
       return;
     }
@@ -716,7 +720,7 @@ const Channel = () => {
       setInlineMessageSavingId(editingMessageId);
       setEditingMessageError(null);
 
-      const payload: Record<string, unknown> = { content: trimmedContent };
+      const payload: Record<string, unknown> = { content: sanitizedContent };
       if (isEditingDraft) {
         payload.isDraft = true;
       }
@@ -724,11 +728,11 @@ const Channel = () => {
       const response = await axios.patch<MessageType>(`/messages/${editingMessageId}`, payload);
 
       upsertMessage(response.data);
-      setEditingMessageContent(trimmedContent);
+      setEditingMessageContent(sanitizedContent);
 
       if (isEditingDraft) {
         if (!editingMessageParentId) {
-          setRootMessage(trimmedContent);
+          setRootMessage(sanitizedContent);
           setActiveDraftId(response.data._id);
           lastKnownDraftIdRef.current = response.data._id;
         } else {
@@ -762,14 +766,14 @@ const Channel = () => {
       return;
     }
 
-    const trimmedContent = editingMessageContent.trim();
+    const sanitizedContent = sanitizeRichText(editingMessageContent);
 
-    if (!trimmedContent) {
+    if (isRichTextEmpty(sanitizedContent)) {
       setEditingMessageError('Message cannot be empty.');
       return;
     }
 
-    await handlePublishDraft(message, trimmedContent);
+    await handlePublishDraft(message, sanitizedContent);
   };
 
   const openDeleteDialog = (message: MessageType) => {
@@ -912,8 +916,8 @@ const Channel = () => {
     }
   };
 
-  const isRootContentEmpty = !rootMessage.trim();
-  const isReplyContentEmpty = !replyMessage.trim();
+  const isRootContentEmpty = isRichTextEmpty(rootMessage);
+  const isReplyContentEmpty = isRichTextEmpty(replyMessage);
   const isRootSubmitDisabled = isRootContentEmpty || isRootSubmitting || isSavingDraft;
   const isRootSaveDisabled = isRootContentEmpty || isSavingDraft || isRootSubmitting;
   const isReplySubmitDisabled = isReplyContentEmpty || isReplySubmitting || isSavingReplyDraft;
@@ -948,15 +952,13 @@ const Channel = () => {
             <FormLabel fontSize="sm" color="gray.600">
               Reply
             </FormLabel>
-            <Textarea
+            <RichTextEditor
               value={replyMessage}
-              onChange={handleReplyMessageChange}
+              onChange={handleReplyEditorChange}
               placeholder="Share your reply"
-              rows={3}
-              bg="white"
-              borderColor="gray.200"
-              _focus={{ borderColor: 'navy.300', boxShadow: 'none' }}
-              size="sm"
+              ariaLabel="Reply message"
+              minHeight="120px"
+              isDisabled={isReplySubmitting || isSavingReplyDraft}
             />
           </FormControl>
 
@@ -1011,6 +1013,14 @@ const Channel = () => {
     );
   };
 
+  const handleInlineEditorChange = (nextHtml: string) => {
+    const sanitized = sanitizeRichText(nextHtml);
+    if (editingMessageError && !isRichTextEmpty(sanitized)) {
+      setEditingMessageError(null);
+    }
+    setEditingMessageContent(sanitized);
+  };
+
   const renderEditableDraftContent = (
     message: MessageType,
     options: {
@@ -1043,34 +1053,24 @@ const Channel = () => {
 
     if (!isEditingCurrent) {
       return (
-        <Text color={textColor} lineHeight={lineHeight}>
-          {message.content}
-        </Text>
+        <RichTextRenderer content={message.content} color={textColor} lineHeight={lineHeight} />
       );
     }
 
-    const trimmedInlineContent = editingMessageContent.trim();
     const isInlineSaving = inlineMessageSavingId === message._id;
     const isInlinePublishing = publishingDraftId === message._id;
-    const disableInlineActions = !trimmedInlineContent || isInlineSaving || isInlinePublishing;
+    const disableInlineActions =
+      isRichTextEmpty(editingMessageContent) || isInlineSaving || isInlinePublishing;
 
     return (
       <VStack align="stretch" spacing={2} mt={1}>
-        <FormControl isInvalid={Boolean(editingMessageError)}>
-          <Textarea
-            value={editingMessageContent}
-            onChange={(event) => {
-              if (editingMessageError) {
-                setEditingMessageError(null);
-              }
-              setEditingMessageContent(event.target.value);
-            }}
-            rows={textareaRows}
-            bg="white"
-            borderColor="navy.200"
-            _focus={{ borderColor: 'navy.400', boxShadow: 'none' }}
-          />
-        </FormControl>
+        <RichTextEditor
+          value={editingMessageContent}
+          onChange={handleInlineEditorChange}
+          minHeight={`${textareaRows * 24}px`}
+          ariaLabel="Edit message"
+          isDisabled={isInlineSaving || isInlinePublishing}
+        />
         {editingMessageError && (
           <Text fontSize="sm" color="red.500">
             {editingMessageError}
@@ -1088,7 +1088,7 @@ const Channel = () => {
             isLoading={isInlineSaving}
             isDisabled={disableInlineActions}
           >
-            {isEditingDraft ? 'Save draft' : 'Publish'}
+            {isEditingDraft ? 'Save draft' : 'Save changes'}
           </Button>
           {message.isDraft && (
             <Button
@@ -1169,7 +1169,10 @@ const Channel = () => {
               {messagePendingDeletion && (
                 <Box p={3} bg="gray.50" borderRadius="md" borderWidth="1px" borderColor="gray.200">
                   <Text fontSize="sm" color="gray.600">
-                    “{messagePendingDeletion.content.slice(0, 140)}{messagePendingDeletion.content.length > 140 ? '…' : ''}”
+                    {(() => {
+                      const previewText = getPlainTextFromHtml(messagePendingDeletion.content);
+                      return `“${previewText.slice(0, 140)}${previewText.length > 140 ? '…' : ''}”`;
+                    })()}
                   </Text>
                 </Box>
               )}
@@ -1715,14 +1718,13 @@ const Channel = () => {
                   <FormLabel fontSize="sm" color="gray.600">
                     Message
                   </FormLabel>
-                  <Textarea
+                  <RichTextEditor
                     value={rootMessage}
-                    onChange={handleRootMessageChange}
+                    onChange={handleRootEditorChange}
                     placeholder="Share your thoughts, references, or questions..."
-                    rows={4}
-                    bg="gray.50"
-                    borderColor="gray.200"
-                    _focus={{ borderColor: 'navy.300', boxShadow: 'none' }}
+                    ariaLabel="Channel message"
+                    minHeight="160px"
+                    isDisabled={isRootSubmitting || isSavingDraft}
                   />
                 </FormControl>
 

@@ -60,9 +60,30 @@ const createSortResult = <T>(data: T[]) => ({
   sort: vi.fn().mockResolvedValue(data),
 });
 
+type MessageDoc = Record<string, unknown> & {
+  _id: string;
+  authorId: { toString(): string };
+  author: string;
+  channel: string;
+  content: string;
+  createdAt: Date;
+  isDraft: boolean;
+  isOrphaned: boolean;
+  __v: number;
+  markModified: ReturnType<typeof vi.fn>;
+  set: (path: string, value: unknown) => void;
+  save: ReturnType<typeof vi.fn>;
+};
+
 const buildMessageDoc = (overrides: Record<string, unknown> = {}) => {
   const markModified = vi.fn();
-  const doc: Record<string, any> = {
+  let doc: MessageDoc;
+
+  const set: MessageDoc['set'] = (path, value) => {
+    (doc as Record<string, unknown>)[path] = value;
+  };
+
+  doc = {
     _id: validMessageId,
     authorId: { toString: () => 'user-1' },
     author: 'TestUser',
@@ -73,9 +94,8 @@ const buildMessageDoc = (overrides: Record<string, unknown> = {}) => {
     isOrphaned: false,
     __v: 0,
     markModified,
-    set: vi.fn((path: string, value: unknown) => {
-      doc[path] = value;
-    }),
+    set,
+    save: vi.fn(),
     ...overrides,
   };
   doc.save = vi.fn().mockResolvedValue(doc);
@@ -110,6 +130,39 @@ describe('Message drafts', () => {
       isDraft: true,
       content: 'Draft body',
     }));
+  });
+
+  it('sanitizes rich text content on create and update', async () => {
+    mockChannelExists.mockResolvedValue(true);
+    const sanitizedCreate = {
+      _id: validMessageId,
+      channel: validChannelId,
+      content: '<p>Hello world</p>',
+      isDraft: false,
+      authorId: 'user-1',
+      author: 'TestUser',
+      __v: 0,
+    };
+    mockMessageCreate.mockResolvedValue(sanitizedCreate);
+
+    const createResponse = await request(app)
+      .post('/messages')
+      .send({ channelId: validChannelId, content: '<p>Hello world</p><script>alert(1)</script>' });
+
+    expect(createResponse.status).toBe(201);
+    expect(mockMessageCreate).toHaveBeenCalledWith(expect.objectContaining({
+      content: '<p>Hello world</p>',
+    }));
+
+    const draftMessage = buildMessageDoc();
+    mockMessageFindById.mockResolvedValueOnce(draftMessage);
+
+    const updateResponse = await request(app)
+      .patch(`/messages/${validMessageId}`)
+      .send({ content: '<ul><li>Safe</li><img src=x onerror=alert(1)></ul>' });
+
+    expect(updateResponse.status).toBe(200);
+    expect(draftMessage.content).toBe('<ul><li>Safe</li></ul>');
   });
 
   it('updates draft content without publishing', async () => {
