@@ -36,28 +36,66 @@ const allowedStyles: sanitizeHtmlLib.IOptions['allowedStyles'] = {
 };
 
 const allowedSchemes: string[] = ['http', 'https', 'mailto'];
-
-export const sanitizeRichText = (dirty: string) =>
-  sanitizeHtmlLib(dirty, {
-    allowedTags,
-    allowedAttributes,
-    allowedStyles,
-    allowedSchemes,
-    allowProtocolRelative: false,
-    transformTags: {
-      a: sanitizeHtmlLib.simpleTransform('a', { rel: 'noopener noreferrer', target: '_blank' }),
-    },
-    parser: {
-      lowerCaseTags: true,
-    },
-  }).trim();
-
-export const getPlainTextFromHtml = (html: string) =>
-  sanitizeRichText(html)
-    .replace(/<br\s*\/?>/gi, '\n')
+const linkTransform = sanitizeHtmlLib.simpleTransform('a', {
+  rel: 'noopener noreferrer',
+  target: '_blank',
+});
+const extractPlainText = (html: string) =>
+  html
+    .replace(/<br\s*\/?>(?=\s|$)/gi, ' ')
     .replace(/<[^>]+>/g, ' ')
-    .replace(/&nbsp;/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 
-export const isRichTextEmpty = (html: string) => getPlainTextFromHtml(html).length === 0;
+const normalizeHref = (value?: string | null) => {
+  if (!value) {
+    return null;
+  }
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+  if (trimmed.toLowerCase().startsWith('mailto:')) {
+    const email = trimmed.slice(7);
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? `mailto:${email}` : null;
+  }
+  try {
+    const parsed = new URL(trimmed);
+    return ['http:', 'https:'].includes(parsed.protocol) ? parsed.href : null;
+  } catch (error) {
+    return null;
+  }
+};
+
+export const sanitizeRichText = (dirty: string) =>
+  (() => {
+    const sanitized = sanitizeHtmlLib(dirty, {
+      allowedTags,
+      allowedAttributes,
+      allowedStyles,
+      allowedSchemes,
+      allowProtocolRelative: false,
+      transformTags: {
+        a: (tagName, attribs) => {
+          const safeHref = normalizeHref(attribs.href);
+          if (!safeHref) {
+            return 'span';
+          }
+          return linkTransform(tagName, { ...attribs, href: safeHref });
+        },
+      },
+      parser: {
+        lowerCaseTags: true,
+      },
+    }).trim();
+    if (!sanitized) {
+      return '';
+    }
+    return extractPlainText(sanitized) ? sanitized : '';
+  })();
+
+export const getPlainTextFromHtml = (html: string) =>
+  extractPlainText(sanitizeRichText(html));
+
+export const isRichTextEmpty = (html: string) => sanitizeRichText(html) === '';

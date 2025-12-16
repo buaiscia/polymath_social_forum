@@ -19,6 +19,11 @@ export const RichTextRenderer = ({ content, className, sx, ...boxProps }: RichTe
         '& em': { fontStyle: 'italic' },
         '& strong': { fontWeight: 600 },
         '& u': { textDecoration: 'underline' },
+        '& a': {
+          color: '#5b21b6',
+          textDecoration: 'underline',
+          fontWeight: 500,
+        },
         '& h1': {
           fontSize: '1.6rem',
           fontWeight: 600,

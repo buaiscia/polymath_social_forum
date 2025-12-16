@@ -36,24 +36,62 @@ const allowedStyles: sanitizeHtmlLib.IOptions['allowedStyles'] = {
 };
 
 const allowedSchemes: string[] = ['http', 'https', 'mailto'];
+const linkTransform = sanitizeHtmlLib.simpleTransform('a', {
+  rel: 'noopener noreferrer',
+  target: '_blank',
+});
+const extractPlainText = (html: string) =>
+  html
+    .replace(/<br\s*\/?>(?=\s|$)/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+const normalizeHref = (value?: string | null) => {
+  if (!value) {
+    return null;
+  }
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+  if (trimmed.toLowerCase().startsWith('mailto:')) {
+    const email = trimmed.slice(7);
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? `mailto:${email}` : null;
+  }
+  try {
+    const parsed = new URL(trimmed);
+    return ['http:', 'https:'].includes(parsed.protocol) ? parsed.href : null;
+  } catch (error) {
+    return null;
+  }
+};
 
 export const sanitizeRichText = (dirty: string) =>
-  sanitizeHtmlLib(dirty, {
-    allowedTags,
-    allowedAttributes,
-    allowedStyles,
-    allowedSchemes,
-    allowProtocolRelative: false,
-    transformTags: {
-      a: sanitizeHtmlLib.simpleTransform('a', { rel: 'noopener noreferrer', target: '_blank' }),
-    },
-    parser: {
-      lowerCaseTags: true,
-    },
-  }).trim();
+  (() => {
+    const sanitized = sanitizeHtmlLib(dirty, {
+      allowedTags,
+      allowedAttributes,
+      allowedStyles,
+      allowedSchemes,
+      allowProtocolRelative: false,
+      transformTags: {
+        a: (tagName, attribs) => {
+          const safeHref = normalizeHref(attribs.href);
+          if (!safeHref) {
+            return 'span';
+          }
+          return linkTransform(tagName, { ...attribs, href: safeHref });
+        },
+      },
+      parser: {
+        lowerCaseTags: true,
+      },
+    }).trim();
+    if (!sanitized) {
+      return '';
+    }
+    return extractPlainText(sanitized) ? sanitized : '';
+  })();
 
-export const isRichTextEmpty = (html: string) => {
-  const sanitized = sanitizeRichText(html);
-  const textOnly = sanitized.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, '').trim();
-  return textOnly.length === 0;
-};
+export const isRichTextEmpty = (html: string) => sanitizeRichText(html) === '';

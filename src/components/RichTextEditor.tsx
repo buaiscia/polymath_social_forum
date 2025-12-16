@@ -1,17 +1,28 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Box,
   Button,
+  FormControl,
+  FormLabel,
   Flex,
   HStack,
   IconButton,
+  Input,
   Menu,
   MenuButton,
   MenuItem,
   MenuList,
+  Popover,
+  PopoverArrow,
+  PopoverBody,
+  PopoverContent,
+  PopoverTrigger,
   Textarea,
+  Text,
   Tooltip,
+  VStack,
   useColorModeValue,
+  useDisclosure,
 } from '@chakra-ui/react';
 import { Extension } from '@tiptap/core';
 import { useEditor, EditorContent, Editor } from '@tiptap/react';
@@ -19,8 +30,10 @@ import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import Underline from '@tiptap/extension-underline';
 import { TextStyle } from '@tiptap/extension-text-style';
+import Link from '@tiptap/extension-link';
 import { getPlainTextFromHtml } from '../utils/sanitizeHtml';
 import {
+  MdInsertLink,
   MdFormatBold,
   MdFormatItalic,
   MdFormatUnderlined,
@@ -49,6 +62,8 @@ type ToolbarButton = {
   isActive: (editor: Editor | null) => boolean;
   run: (editor: Editor) => void;
   canExecute: (editor: Editor | null) => boolean;
+  shortcutHint?: string;
+  ariaKeyShortcuts?: string;
 };
 
 type TextStyleOption = {
@@ -59,6 +74,34 @@ type TextStyleOption = {
 type FontSizeOption = {
   label: string;
   value: string | null;
+};
+
+const normalizeLinkHref = (rawValue: string) => {
+  if (!rawValue) {
+    return null;
+  }
+  let value = rawValue.trim();
+  if (!value) {
+    return null;
+  }
+  const hasProtocol = /^[a-zA-Z][\w+.-]*:/.test(value);
+  if (!hasProtocol) {
+    if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+      value = `mailto:${value}`;
+    } else {
+      value = `https://${value}`;
+    }
+  }
+  if (value.toLowerCase().startsWith('mailto:')) {
+    const email = value.slice(7);
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? `mailto:${email}` : null;
+  }
+  try {
+    const parsed = new URL(value);
+    return ['http:', 'https:'].includes(parsed.protocol) ? parsed.href : null;
+  } catch (error) {
+    return null;
+  }
 };
 
 const FontSizeExtension = Extension.create({
@@ -91,6 +134,8 @@ const toolbarButtons: ToolbarButton[] = [
     isActive: (editor) => Boolean(editor?.isActive('bold')),
     run: (editor) => editor.chain().focus().toggleBold().run(),
     canExecute: (editor) => Boolean(editor?.can().chain().toggleBold().run()),
+    shortcutHint: 'Cmd/Ctrl + B',
+    ariaKeyShortcuts: 'Control+B Meta+B',
   },
   {
     icon: MdFormatItalic,
@@ -98,6 +143,8 @@ const toolbarButtons: ToolbarButton[] = [
     isActive: (editor) => Boolean(editor?.isActive('italic')),
     run: (editor) => editor.chain().focus().toggleItalic().run(),
     canExecute: (editor) => Boolean(editor?.can().chain().toggleItalic().run()),
+    shortcutHint: 'Cmd/Ctrl + I',
+    ariaKeyShortcuts: 'Control+I Meta+I',
   },
   {
     icon: MdFormatUnderlined,
@@ -105,6 +152,8 @@ const toolbarButtons: ToolbarButton[] = [
     isActive: (editor) => Boolean(editor?.isActive('underline')),
     run: (editor) => editor.chain().focus().toggleUnderline().run(),
     canExecute: (editor) => Boolean(editor?.can().chain().toggleUnderline().run()),
+    shortcutHint: 'Cmd/Ctrl + U',
+    ariaKeyShortcuts: 'Control+U Meta+U',
   },
   {
     icon: MdFormatStrikethrough,
@@ -173,6 +222,29 @@ export const RichTextEditor = ({
 }: RichTextEditorProps) => {
   const isTestEnv = Boolean(import.meta.env?.VITEST);
   const [, forceToolbarRefresh] = useState(0);
+  const linkInputRef = useRef<HTMLInputElement | null>(null);
+  const { isOpen: isLinkPopoverOpen, onOpen: onLinkPopoverOpen, onClose: onLinkPopoverClose } = useDisclosure();
+  const [linkUrl, setLinkUrl] = useState('');
+  const [linkError, setLinkError] = useState('');
+  const closeLinkPopover = () => {
+    setLinkError('');
+    onLinkPopoverClose();
+  };
+  const handleLinkSave = () => {
+    if (!editor) return;
+    const normalized = normalizeLinkHref(linkUrl);
+    if (!normalized) {
+      setLinkError('Enter a valid http(s) URL or email address.');
+      return;
+    }
+    editor.chain().focus().extendMarkRange('link').setLink({ href: normalized }).run();
+    closeLinkPopover();
+  };
+  const handleLinkRemove = () => {
+    if (!editor) return;
+    editor.chain().focus().unsetLink().run();
+    closeLinkPopover();
+  };
 
 
   const editor = useEditor({
@@ -183,6 +255,16 @@ export const RichTextEditor = ({
         heading: { levels: [1, 2, 3, 4, 5, 6] },
       }),
       Underline,
+      Link.configure({
+        autolink: true,
+        linkOnPaste: true,
+        openOnClick: false,
+        HTMLAttributes: {
+          rel: 'noopener noreferrer',
+          target: '_blank',
+        },
+        validate: (href) => Boolean(normalizeLinkHref(href)),
+      }),
       Placeholder.configure({
         placeholder: placeholder ?? 'Start typing...',
       }),
@@ -207,6 +289,10 @@ export const RichTextEditor = ({
   useEffect(() => {
     if (!editor) return;
     editor.setEditable(!isDisabled);
+    if (isDisabled) {
+      setLinkError('');
+      onLinkPopoverClose();
+    }
   }, [isDisabled, editor]);
 
   const bg = useColorModeValue('white', 'gray.800');
@@ -337,19 +423,100 @@ export const RichTextEditor = ({
               ))}
             </MenuList>
           </Menu>
-          {toolbarButtons.map((button) => (
-            <Tooltip key={button.label} label={button.label} placement="top">
-              <IconButton
-                aria-label={button.label}
-                icon={<button.icon size={18} />}
-                size="sm"
-                variant={button.isActive(editor) ? 'solid' : 'ghost'}
-                colorScheme="purple"
-                onClick={() => editor && button.run(editor)}
-                isDisabled={isDisabled || !button.canExecute(editor ?? null)}
-              />
-            </Tooltip>
-          ))}
+          {toolbarButtons.map((button) => {
+            const tooltipLabel = button.shortcutHint ? `${button.label} (${button.shortcutHint})` : button.label;
+            return (
+              <Tooltip key={button.label} label={tooltipLabel} placement="top">
+                <IconButton
+                  aria-label={button.label}
+                  aria-keyshortcuts={button.ariaKeyShortcuts}
+                  icon={<button.icon size={18} />}
+                  size="sm"
+                  variant={button.isActive(editor) ? 'solid' : 'ghost'}
+                  colorScheme="purple"
+                  onClick={() => editor && button.run(editor)}
+                  isDisabled={isDisabled || !button.canExecute(editor ?? null)}
+                />
+              </Tooltip>
+            );
+          })}
+          <Popover
+            isOpen={isLinkPopoverOpen}
+            onClose={closeLinkPopover}
+            closeOnBlur
+            initialFocusRef={linkInputRef}
+            placement="bottom-start"
+          >
+            <PopoverTrigger>
+              <span>
+                <Tooltip label="Insert link" placement="top">
+                  <IconButton
+                    aria-label="Insert link"
+                    icon={<MdInsertLink size={18} />}
+                    size="sm"
+                    variant={editor?.isActive('link') ? 'solid' : 'ghost'}
+                    colorScheme="purple"
+                    onClick={() => {
+                      if (!editor || isDisabled) return;
+                      const currentHref = editor.getAttributes('link')?.href ?? '';
+                      setLinkUrl(currentHref);
+                      setLinkError('');
+                      onLinkPopoverOpen();
+                    }}
+                    isDisabled={isDisabled || !editor}
+                  />
+                </Tooltip>
+              </span>
+            </PopoverTrigger>
+            <PopoverContent w="280px" _focus={{ outline: 'none' }}>
+              <PopoverArrow />
+              <PopoverBody>
+                <VStack spacing={3} align="stretch">
+                  <FormControl isInvalid={Boolean(linkError)}>
+                    <FormLabel fontSize="sm">Link URL</FormLabel>
+                    <Input
+                      ref={linkInputRef}
+                      size="sm"
+                      placeholder="https://example.com"
+                      value={linkUrl}
+                      onChange={(event) => {
+                        setLinkUrl(event.target.value);
+                        if (linkError) setLinkError('');
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          handleLinkSave();
+                        }
+                        if (event.key === 'Escape') {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          closeLinkPopover();
+                        }
+                      }}
+                    />
+                    <Text fontSize="xs" color={linkError ? 'red.500' : 'gray.500'} mt={1}>
+                      {linkError || 'Supports http, https, or mailto links.'}
+                    </Text>
+                  </FormControl>
+                  <HStack justify="flex-end" spacing={2}>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={handleLinkRemove}
+                      isDisabled={!editor?.isActive('link')}
+                    >
+                      Remove
+                    </Button>
+                    <Button size="sm" colorScheme="purple" type="button" onClick={handleLinkSave}>
+                      Save
+                    </Button>
+                  </HStack>
+                </VStack>
+              </PopoverBody>
+            </PopoverContent>
+          </Popover>
         </HStack>
         <HStack spacing={1} ml="auto">
           <IconButton
@@ -391,6 +558,11 @@ export const RichTextEditor = ({
         }
         .rich-text-editor__content .ProseMirror u {
           text-decoration: underline;
+        }
+        .rich-text-editor__content .ProseMirror a {
+          color: #5b21b6;
+          text-decoration: underline;
+          font-weight: 500;
         }
         .rich-text-editor__content .ProseMirror h1 {
           font-size: 1.6rem;
