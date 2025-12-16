@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import {
   Box,
   Button,
@@ -221,30 +221,6 @@ export const RichTextEditor = ({
   dataTestId,
 }: RichTextEditorProps) => {
   const isTestEnv = Boolean(import.meta.env?.VITEST);
-  const [, forceToolbarRefresh] = useState(0);
-  const linkInputRef = useRef<HTMLInputElement | null>(null);
-  const { isOpen: isLinkPopoverOpen, onOpen: onLinkPopoverOpen, onClose: onLinkPopoverClose } = useDisclosure();
-  const [linkUrl, setLinkUrl] = useState('');
-  const [linkError, setLinkError] = useState('');
-  const closeLinkPopover = () => {
-    setLinkError('');
-    onLinkPopoverClose();
-  };
-  const handleLinkSave = () => {
-    if (!editor) return;
-    const normalized = normalizeLinkHref(linkUrl);
-    if (!normalized) {
-      setLinkError('Enter a valid http(s) URL or email address.');
-      return;
-    }
-    editor.chain().focus().extendMarkRange('link').setLink({ href: normalized }).run();
-    closeLinkPopover();
-  };
-  const handleLinkRemove = () => {
-    if (!editor) return;
-    editor.chain().focus().unsetLink().run();
-    closeLinkPopover();
-  };
 
 
   const editor = useEditor({
@@ -274,8 +250,6 @@ export const RichTextEditor = ({
     onUpdate: ({ editor: instance }) => {
       onChange(instance.getHTML());
     },
-    onSelectionUpdate: () => forceToolbarRefresh((count) => count + 1),
-    onTransaction: () => forceToolbarRefresh((count) => count + 1),
   });
 
   useEffect(() => {
@@ -289,58 +263,10 @@ export const RichTextEditor = ({
   useEffect(() => {
     if (!editor) return;
     editor.setEditable(!isDisabled);
-    if (isDisabled) {
-      setLinkError('');
-      onLinkPopoverClose();
-    }
   }, [isDisabled, editor]);
 
   const bg = useColorModeValue('white', 'gray.800');
   const border = useColorModeValue('gray.200', 'gray.700');
-
-  const isTextStyleActive = (option: TextStyleOption) => {
-    if (!editor) {
-      return option.level === null;
-    }
-    if (option.level === null) {
-      return editor.isActive('paragraph') || !editor.isActive('heading');
-    }
-    return editor.isActive('heading', { level: option.level });
-  };
-
-  const activeTextStyle = textStyleOptions.find((option) => isTextStyleActive(option)) ?? textStyleOptions[0];
-
-  const canApplyTextStyle = () => Boolean(editor);
-
-  const handleTextStyleChange = (level: number | null) => {
-    if (!editor) return;
-    let chain = editor.chain().focus().unsetMark('textStyle');
-    if (level) {
-      chain = chain.setHeading({ level });
-    } else {
-      chain = chain.setParagraph();
-    }
-    chain.run();
-  };
-
-  const currentFontSize = editor?.getAttributes('textStyle')?.fontSize ?? null;
-  const activeFontSizeOption =
-    fontSizeOptions.find((option) => option.value === currentFontSize) ?? fontSizeOptions[0];
-
-  const isFontSizeActive = (option: FontSizeOption) => option.value === currentFontSize;
-
-  const canApplyFontSize = () => Boolean(editor);
-
-  const handleFontSizeChange = (value: string | null) => {
-    if (!editor) return;
-    let chain = editor.chain().focus().setParagraph();
-    if (value) {
-      chain = chain.setMark('textStyle', { fontSize: value });
-    } else {
-      chain = chain.unsetMark('textStyle');
-    }
-    chain.run();
-  };
 
   if (isTestEnv) {
     const plainValue = getPlainTextFromHtml(value);
@@ -361,182 +287,7 @@ export const RichTextEditor = ({
 
   return (
     <Box borderWidth="1px" borderColor={border} borderRadius="lg" bg={bg} data-testid={dataTestId}>
-      <Flex
-        borderBottomWidth="1px"
-        borderColor={border}
-        px={2}
-        py={1}
-        align="center"
-        gap={1}
-        flexWrap="wrap"
-      >
-        <HStack spacing={1} flexWrap="wrap">
-          <Menu>
-            <Tooltip label="Text style" placement="top">
-              <MenuButton
-                as={Button}
-                size="sm"
-                variant="ghost"
-                fontWeight="medium"
-                px={3}
-                isDisabled={isDisabled || !editor}
-              >
-                {activeTextStyle.label}
-              </MenuButton>
-            </Tooltip>
-            <MenuList zIndex="popover">
-              {textStyleOptions.map((option) => (
-                <MenuItem
-                  key={option.label}
-                  onClick={() => handleTextStyleChange(option.level)}
-                  isDisabled={isDisabled || !canApplyTextStyle()}
-                  fontWeight={isTextStyleActive(option) ? 'semibold' : 'normal'}
-                >
-                  {option.label}
-                </MenuItem>
-              ))}
-            </MenuList>
-          </Menu>
-          <Menu>
-            <Tooltip label="Font size" placement="top">
-              <MenuButton
-                as={Button}
-                size="sm"
-                variant="ghost"
-                fontWeight="medium"
-                px={3}
-                isDisabled={isDisabled || !editor}
-              >
-                {activeFontSizeOption.label}
-              </MenuButton>
-            </Tooltip>
-            <MenuList zIndex="popover">
-              {fontSizeOptions.map((option) => (
-                <MenuItem
-                  key={option.label}
-                  onClick={() => handleFontSizeChange(option.value)}
-                  isDisabled={isDisabled || !canApplyFontSize()}
-                  fontWeight={isFontSizeActive(option) ? 'semibold' : 'normal'}
-                >
-                  {option.label}
-                </MenuItem>
-              ))}
-            </MenuList>
-          </Menu>
-          {toolbarButtons.map((button) => {
-            const tooltipLabel = button.shortcutHint ? `${button.label} (${button.shortcutHint})` : button.label;
-            return (
-              <Tooltip key={button.label} label={tooltipLabel} placement="top">
-                <IconButton
-                  aria-label={button.label}
-                  aria-keyshortcuts={button.ariaKeyShortcuts}
-                  icon={<button.icon size={18} />}
-                  size="sm"
-                  variant={button.isActive(editor) ? 'solid' : 'ghost'}
-                  colorScheme="purple"
-                  onClick={() => editor && button.run(editor)}
-                  isDisabled={isDisabled || !button.canExecute(editor ?? null)}
-                />
-              </Tooltip>
-            );
-          })}
-          <Popover
-            isOpen={isLinkPopoverOpen}
-            onClose={closeLinkPopover}
-            closeOnBlur
-            initialFocusRef={linkInputRef}
-            placement="bottom-start"
-          >
-            <PopoverTrigger>
-              <span>
-                <Tooltip label="Insert link" placement="top">
-                  <IconButton
-                    aria-label="Insert link"
-                    icon={<MdInsertLink size={18} />}
-                    size="sm"
-                    variant={editor?.isActive('link') ? 'solid' : 'ghost'}
-                    colorScheme="purple"
-                    onClick={() => {
-                      if (!editor || isDisabled) return;
-                      const currentHref = editor.getAttributes('link')?.href ?? '';
-                      setLinkUrl(currentHref);
-                      setLinkError('');
-                      onLinkPopoverOpen();
-                    }}
-                    isDisabled={isDisabled || !editor}
-                  />
-                </Tooltip>
-              </span>
-            </PopoverTrigger>
-            <PopoverContent w="280px" _focus={{ outline: 'none' }}>
-              <PopoverArrow />
-              <PopoverBody>
-                <VStack spacing={3} align="stretch">
-                  <FormControl isInvalid={Boolean(linkError)}>
-                    <FormLabel fontSize="sm">Link URL</FormLabel>
-                    <Input
-                      ref={linkInputRef}
-                      size="sm"
-                      placeholder="https://example.com"
-                      value={linkUrl}
-                      onChange={(event) => {
-                        setLinkUrl(event.target.value);
-                        if (linkError) setLinkError('');
-                      }}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter') {
-                          event.preventDefault();
-                          event.stopPropagation();
-                          handleLinkSave();
-                        }
-                        if (event.key === 'Escape') {
-                          event.preventDefault();
-                          event.stopPropagation();
-                          closeLinkPopover();
-                        }
-                      }}
-                    />
-                    <Text fontSize="xs" color={linkError ? 'red.500' : 'gray.500'} mt={1}>
-                      {linkError || 'Supports http, https, or mailto links.'}
-                    </Text>
-                  </FormControl>
-                  <HStack justify="flex-end" spacing={2}>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={handleLinkRemove}
-                      isDisabled={!editor?.isActive('link')}
-                    >
-                      Remove
-                    </Button>
-                    <Button size="sm" colorScheme="purple" type="button" onClick={handleLinkSave}>
-                      Save
-                    </Button>
-                  </HStack>
-                </VStack>
-              </PopoverBody>
-            </PopoverContent>
-          </Popover>
-        </HStack>
-        <HStack spacing={1} ml="auto">
-          <IconButton
-            aria-label="Undo"
-            icon={<MdUndo size={18} />}
-            size="sm"
-            variant="ghost"
-            onClick={() => editor?.chain().focus().undo().run()}
-            isDisabled={isDisabled || !editor?.can().chain().undo().run()}
-          />
-          <IconButton
-            aria-label="Redo"
-            icon={<MdRedo size={18} />}
-            size="sm"
-            variant="ghost"
-            onClick={() => editor?.chain().focus().redo().run()}
-            isDisabled={isDisabled || !editor?.can().chain().redo().run()}
-          />
-        </HStack>
-      </Flex>
+      <RichTextToolbar editor={editor} isDisabled={isDisabled} borderColor={border} />
       <Box px={3} py={2}>
         <EditorContent
           editor={editor}
@@ -615,3 +366,341 @@ export const RichTextEditor = ({
 };
 
 export default RichTextEditor;
+
+interface RichTextToolbarProps {
+  editor: Editor | null;
+  isDisabled?: boolean;
+  borderColor: string;
+}
+
+type ToolbarButtonSnapshot = {
+  isActive: boolean;
+  canExecute: boolean;
+};
+
+interface ToolbarSnapshot {
+  textStyleLevel: number | null;
+  fontSize: string | null;
+  buttons: Record<string, ToolbarButtonSnapshot>;
+  isLinkActive: boolean;
+  canUndo: boolean;
+  canRedo: boolean;
+}
+
+const computeToolbarSnapshot = (editor: Editor): ToolbarSnapshot => {
+  const textStyleLevel = (() => {
+    for (const option of textStyleOptions) {
+      if (option.level && editor.isActive('heading', { level: option.level })) {
+        return option.level;
+      }
+      if (
+        option.level === null &&
+        (editor.isActive('paragraph') || !editor.isActive('heading'))
+      ) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  const buttons = toolbarButtons.reduce<Record<string, ToolbarButtonSnapshot>>((acc, button) => {
+    acc[button.label] = {
+      isActive: button.isActive(editor),
+      canExecute: button.canExecute(editor),
+    };
+    return acc;
+  }, {});
+
+  return {
+    textStyleLevel,
+    fontSize: editor.getAttributes('textStyle')?.fontSize ?? null,
+    buttons,
+    isLinkActive: editor.isActive('link'),
+    canUndo: Boolean(editor.can().chain().undo().run()),
+    canRedo: Boolean(editor.can().chain().redo().run()),
+  };
+};
+
+const areToolbarSnapshotsEqual = (prev: ToolbarSnapshot | null, next: ToolbarSnapshot | null) => {
+  if (prev === next) return true;
+  if (!prev || !next) return false;
+  if (
+    prev.textStyleLevel !== next.textStyleLevel ||
+    prev.fontSize !== next.fontSize ||
+    prev.isLinkActive !== next.isLinkActive ||
+    prev.canUndo !== next.canUndo ||
+    prev.canRedo !== next.canRedo
+  ) {
+    return false;
+  }
+  for (const button of toolbarButtons) {
+    const prevState = prev.buttons[button.label];
+    const nextState = next.buttons[button.label];
+    if (!prevState || !nextState) {
+      return false;
+    }
+    if (prevState.isActive !== nextState.isActive || prevState.canExecute !== nextState.canExecute) {
+      return false;
+    }
+  }
+  return true;
+};
+
+const useToolbarSnapshot = (editor: Editor | null) => {
+  const [snapshot, setSnapshot] = useState<ToolbarSnapshot | null>(() => (editor ? computeToolbarSnapshot(editor) : null));
+
+  useEffect(() => {
+    if (!editor) {
+      setSnapshot(null);
+      return;
+    }
+
+    const updateSnapshot = () => {
+      setSnapshot((prev) => {
+        const next = computeToolbarSnapshot(editor);
+        return areToolbarSnapshotsEqual(prev, next) ? prev : next;
+      });
+    };
+
+    updateSnapshot();
+    const events: Array<Parameters<Editor['on']>[0]> = ['selectionUpdate', 'transaction', 'focus', 'blur'];
+    events.forEach((event) => editor.on(event, updateSnapshot));
+    return () => {
+      events.forEach((event) => editor.off(event, updateSnapshot));
+    };
+  }, [editor]);
+
+  return snapshot;
+};
+
+const RichTextToolbar = memo(function RichTextToolbarComponent({ editor, isDisabled, borderColor }: RichTextToolbarProps) {
+  const toolbarSnapshot = useToolbarSnapshot(editor);
+  const linkInputRef = useRef<HTMLInputElement | null>(null);
+  const { isOpen: isLinkPopoverOpen, onOpen: onLinkPopoverOpen, onClose: onLinkPopoverClose } = useDisclosure();
+  const [linkUrl, setLinkUrl] = useState('');
+  const [linkError, setLinkError] = useState('');
+
+  const closeLinkPopover = () => {
+    setLinkError('');
+    onLinkPopoverClose();
+  };
+
+  const handleLinkSave = () => {
+    if (!editor) return;
+    const normalized = normalizeLinkHref(linkUrl);
+    if (!normalized) {
+      setLinkError('Enter a valid http(s) URL or email address.');
+      return;
+    }
+    editor.chain().focus().extendMarkRange('link').setLink({ href: normalized }).run();
+    closeLinkPopover();
+  };
+
+  const handleLinkRemove = () => {
+    if (!editor) return;
+    editor.chain().focus().unsetLink().run();
+    closeLinkPopover();
+  };
+
+  const activeTextStyleLevel = toolbarSnapshot?.textStyleLevel ?? null;
+  const activeTextStyle = textStyleOptions.find((option) => option.level === activeTextStyleLevel) ?? textStyleOptions[0];
+
+  const handleTextStyleChange = (level: number | null) => {
+    if (!editor) return;
+    let chain = editor.chain().focus().unsetMark('textStyle');
+    if (level) {
+      chain = chain.setHeading({ level });
+    } else {
+      chain = chain.setParagraph();
+    }
+    chain.run();
+  };
+
+  const currentFontSize = toolbarSnapshot?.fontSize ?? null;
+  const activeFontSizeOption =
+    fontSizeOptions.find((option) => option.value === currentFontSize) ?? fontSizeOptions[0];
+
+  const handleFontSizeChange = (value: string | null) => {
+    if (!editor) return;
+    let chain = editor.chain().focus().setParagraph();
+    if (value) {
+      chain = chain.setMark('textStyle', { fontSize: value });
+    } else {
+      chain = chain.unsetMark('textStyle');
+    }
+    chain.run();
+  };
+
+  return (
+    <Flex borderBottomWidth="1px" borderColor={borderColor} px={2} py={1} align="center" gap={1} flexWrap="wrap">
+      <HStack spacing={1} flexWrap="wrap">
+        <Menu>
+          <Tooltip label="Text style" placement="top">
+            <MenuButton
+              as={Button}
+              size="sm"
+              variant="ghost"
+              fontWeight="medium"
+              px={3}
+              isDisabled={isDisabled || !editor}
+            >
+              {activeTextStyle.label}
+            </MenuButton>
+          </Tooltip>
+          <MenuList zIndex="popover">
+            {textStyleOptions.map((option) => (
+              <MenuItem
+                key={option.label}
+                onClick={() => handleTextStyleChange(option.level)}
+                isDisabled={isDisabled || !editor}
+                fontWeight={option.level === activeTextStyleLevel ? 'semibold' : 'normal'}
+              >
+                {option.label}
+              </MenuItem>
+            ))}
+          </MenuList>
+        </Menu>
+        <Menu>
+          <Tooltip label="Font size" placement="top">
+            <MenuButton
+              as={Button}
+              size="sm"
+              variant="ghost"
+              fontWeight="medium"
+              px={3}
+              isDisabled={isDisabled || !editor}
+            >
+              {activeFontSizeOption.label}
+            </MenuButton>
+          </Tooltip>
+          <MenuList zIndex="popover">
+            {fontSizeOptions.map((option) => (
+              <MenuItem
+                key={option.label}
+                onClick={() => handleFontSizeChange(option.value)}
+                isDisabled={isDisabled || !editor}
+                fontWeight={option.value === currentFontSize ? 'semibold' : 'normal'}
+              >
+                {option.label}
+              </MenuItem>
+            ))}
+          </MenuList>
+        </Menu>
+        {toolbarButtons.map((button) => {
+          const tooltipLabel = button.shortcutHint ? `${button.label} (${button.shortcutHint})` : button.label;
+          const buttonSnapshot = toolbarSnapshot?.buttons[button.label];
+          return (
+            <Tooltip key={button.label} label={tooltipLabel} placement="top">
+              <IconButton
+                aria-label={button.label}
+                aria-keyshortcuts={button.ariaKeyShortcuts}
+                icon={<button.icon size={18} />}
+                size="sm"
+                variant={buttonSnapshot?.isActive ? 'solid' : 'ghost'}
+                colorScheme="purple"
+                onClick={() => editor && button.run(editor)}
+                isDisabled={isDisabled || !buttonSnapshot?.canExecute}
+              />
+            </Tooltip>
+          );
+        })}
+        <Popover
+          isOpen={isLinkPopoverOpen}
+          onClose={closeLinkPopover}
+          closeOnBlur
+          initialFocusRef={linkInputRef}
+          placement="bottom-start"
+        >
+          <PopoverTrigger>
+            <span>
+              <Tooltip label="Insert link" placement="top">
+                <IconButton
+                  aria-label="Insert link"
+                  icon={<MdInsertLink size={18} />}
+                  size="sm"
+                  variant={toolbarSnapshot?.isLinkActive ? 'solid' : 'ghost'}
+                  colorScheme="purple"
+                  onClick={() => {
+                    if (!editor || isDisabled) return;
+                    const currentHref = editor.getAttributes('link')?.href ?? '';
+                    setLinkUrl(currentHref);
+                    setLinkError('');
+                    onLinkPopoverOpen();
+                  }}
+                  isDisabled={isDisabled || !editor}
+                />
+              </Tooltip>
+            </span>
+          </PopoverTrigger>
+          <PopoverContent w="280px" _focus={{ outline: 'none' }}>
+            <PopoverArrow />
+            <PopoverBody>
+              <VStack spacing={3} align="stretch">
+                <FormControl isInvalid={Boolean(linkError)}>
+                  <FormLabel fontSize="sm">Link URL</FormLabel>
+                  <Input
+                    ref={linkInputRef}
+                    size="sm"
+                    placeholder="https://example.com"
+                    value={linkUrl}
+                    onChange={(event) => {
+                      setLinkUrl(event.target.value);
+                      if (linkError) setLinkError('');
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        handleLinkSave();
+                      }
+                      if (event.key === 'Escape') {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        closeLinkPopover();
+                      }
+                    }}
+                  />
+                  <Text fontSize="xs" color={linkError ? 'red.500' : 'gray.500'} mt={1}>
+                    {linkError || 'Supports http, https, or mailto links.'}
+                  </Text>
+                </FormControl>
+                <HStack justify="flex-end" spacing={2}>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={handleLinkRemove}
+                    isDisabled={!editor?.isActive('link')}
+                  >
+                    Remove
+                  </Button>
+                  <Button size="sm" colorScheme="purple" type="button" onClick={handleLinkSave}>
+                    Save
+                  </Button>
+                </HStack>
+              </VStack>
+            </PopoverBody>
+          </PopoverContent>
+        </Popover>
+      </HStack>
+      <HStack spacing={1} ml="auto">
+        <IconButton
+          aria-label="Undo"
+          icon={<MdUndo size={18} />}
+          size="sm"
+          variant="ghost"
+          onClick={() => editor?.chain().focus().undo().run()}
+          isDisabled={isDisabled || !toolbarSnapshot?.canUndo}
+        />
+        <IconButton
+          aria-label="Redo"
+          icon={<MdRedo size={18} />}
+          size="sm"
+          variant="ghost"
+          onClick={() => editor?.chain().focus().redo().run()}
+          isDisabled={isDisabled || !toolbarSnapshot?.canRedo}
+        />
+      </HStack>
+    </Flex>
+  );
+});
+

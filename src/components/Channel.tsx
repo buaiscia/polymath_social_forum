@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   AlertIcon,
@@ -70,6 +70,11 @@ interface MessageType {
 interface ThreadGroup {
   root: MessageType;
   children: MessageType[];
+}
+
+interface ComposerSeed {
+  content: string;
+  revision: number;
 }
 
 const sortByCreatedAt = (a: MessageType, b: MessageType) => {
@@ -248,12 +253,15 @@ const Channel = () => {
   const [messages, setMessages] = useState<MessageType[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [rootMessage, setRootMessage] = useState('');
   const [composerMode, setComposerMode] = useState<'draft' | 'publish'>('publish');
   const [activeDraftId, setActiveDraftId] = useState<string | null>(null);
-  const [rootSubmitError, setRootSubmitError] = useState<string | null>(null);
-  const [isRootSubmitting, setIsRootSubmitting] = useState(false);
-  const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [rootComposerSeed, setRootComposerSeed] = useState<ComposerSeed>({ content: '', revision: 0 });
+  const syncRootComposer = useCallback((nextContent: string) => {
+    setRootComposerSeed((prev) => ({
+      content: nextContent,
+      revision: prev.revision + 1,
+    }));
+  }, []);
   const [publishingDraftId, setPublishingDraftId] = useState<string | null>(null);
   const [replyParentId, setReplyParentId] = useState<string | null>(null);
   const [replyMessage, setReplyMessage] = useState('');
@@ -326,7 +334,7 @@ const Channel = () => {
       lastKnownDraftIdRef.current = null;
       setActiveDraftId(null);
       setComposerMode('publish');
-      setRootMessage('');
+      syncRootComposer('');
       return;
     }
 
@@ -339,7 +347,7 @@ const Channel = () => {
 
     if (existingDraft) {
       if (lastKnownDraftIdRef.current !== existingDraft._id) {
-        setRootMessage(sanitizeRichText(existingDraft.content));
+        syncRootComposer(sanitizeRichText(existingDraft.content));
       }
       lastKnownDraftIdRef.current = existingDraft._id;
       setActiveDraftId(existingDraft._id);
@@ -349,7 +357,7 @@ const Channel = () => {
       setActiveDraftId(null);
       setComposerMode('publish');
     }
-  }, [messages, authUserId]);
+  }, [messages, authUserId, syncRootComposer]);
 
   useEffect(() => {
     if (!replyParentId) {
@@ -412,12 +420,6 @@ const Channel = () => {
 
   const canMessageReceiveReplies = (message?: MessageType | null) =>
     Boolean(message && !message.isDraft && !message.isOrphaned && !message.isPlaceholder);
-
-  const handleRootEditorChange = (nextHtml: string) => {
-    const sanitized = sanitizeRichText(nextHtml);
-    if (rootSubmitError && !isRichTextEmpty(sanitized)) setRootSubmitError(null);
-    setRootMessage(sanitized);
-  };
 
   const handleReplyEditorChange = (nextHtml: string) => {
     const sanitized = sanitizeRichText(nextHtml);
@@ -498,21 +500,18 @@ const Channel = () => {
     }));
   };
 
-  const handleRootSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const sanitizedContent = sanitizeRichText(rootMessage);
+  const handleRootSubmit = async (content: string) => {
+    const sanitizedContent = sanitizeRichText(content);
 
     if (!id || isRichTextEmpty(sanitizedContent)) {
-      return;
+      throw new Error('Message cannot be empty.');
     }
 
     if (!ensureAuthenticated()) {
-      return;
+      throw new Error('You must be logged in to send messages.');
     }
 
     try {
-      setIsRootSubmitting(true);
-      setRootSubmitError(null);
       setComposerMode('publish');
 
       if (activeDraftId) {
@@ -529,7 +528,7 @@ const Channel = () => {
         upsertMessage(response.data);
       }
 
-      setRootMessage('');
+      syncRootComposer('');
       setActiveDraftId(null);
       lastKnownDraftIdRef.current = null;
       stopEditingMessage();
@@ -541,9 +540,7 @@ const Channel = () => {
       });
     } catch (err) {
       console.error('Failed to send message:', err);
-      setRootSubmitError('Unable to send your message right now. Please try again.');
-    } finally {
-      setIsRootSubmitting(false);
+      throw new Error('Unable to send your message right now. Please try again.');
     }
   };
 
@@ -651,21 +648,18 @@ const Channel = () => {
     }
   };
 
-  const handleSaveDraft = async () => {
-    const sanitizedContent = sanitizeRichText(rootMessage);
+  const handleSaveDraft = async (content: string) => {
+    const sanitizedContent = sanitizeRichText(content);
 
     if (!id || isRichTextEmpty(sanitizedContent)) {
-      return;
+      throw new Error('Draft cannot be empty.');
     }
 
     if (!ensureAuthenticated()) {
-      return;
+      throw new Error('You must be logged in to save drafts.');
     }
 
     try {
-      setIsSavingDraft(true);
-      setRootSubmitError(null);
-
       let savedMessage: MessageType;
       if (activeDraftId) {
         const response = await axios.patch<MessageType>(`/messages/${activeDraftId}`, {
@@ -686,6 +680,7 @@ const Channel = () => {
       setActiveDraftId(savedMessage._id);
       lastKnownDraftIdRef.current = savedMessage._id;
       setComposerMode('draft');
+      syncRootComposer(sanitizedContent);
       toast({
         title: 'Draft saved',
         status: 'success',
@@ -694,9 +689,7 @@ const Channel = () => {
       });
     } catch (err) {
       console.error('Failed to save draft:', err);
-      setRootSubmitError('Unable to save your draft right now. Please try again.');
-    } finally {
-      setIsSavingDraft(false);
+      throw new Error('Unable to save your draft right now. Please try again.');
     }
   };
 
@@ -732,7 +725,7 @@ const Channel = () => {
 
       if (isEditingDraft) {
         if (!editingMessageParentId) {
-          setRootMessage(sanitizedContent);
+          syncRootComposer(sanitizedContent);
           setActiveDraftId(response.data._id);
           lastKnownDraftIdRef.current = response.data._id;
         } else {
@@ -822,7 +815,7 @@ const Channel = () => {
       if (activeDraftId === target._id) {
         setActiveDraftId(null);
         lastKnownDraftIdRef.current = null;
-        setRootMessage('');
+        syncRootComposer('');
         setComposerMode('publish');
       }
 
@@ -879,7 +872,7 @@ const Channel = () => {
       if (message._id === activeDraftId) {
         setActiveDraftId(null);
         lastKnownDraftIdRef.current = null;
-        setRootMessage('');
+        syncRootComposer('');
         setComposerMode('publish');
       }
       if (message._id === activeReplyDraftId || message.parentMessage) {
@@ -916,10 +909,7 @@ const Channel = () => {
     }
   };
 
-  const isRootContentEmpty = isRichTextEmpty(rootMessage);
   const isReplyContentEmpty = isRichTextEmpty(replyMessage);
-  const isRootSubmitDisabled = isRootContentEmpty || isRootSubmitting || isSavingDraft;
-  const isRootSaveDisabled = isRootContentEmpty || isSavingDraft || isRootSubmitting;
   const isReplySubmitDisabled = isReplyContentEmpty || isReplySubmitting || isSavingReplyDraft;
   const isReplySaveDisabled = isReplyContentEmpty || isSavingReplyDraft || isReplySubmitting;
   const hasMessages = Boolean(primaryMessage || otherThreads.length);
@@ -1697,78 +1687,159 @@ const Channel = () => {
               </VStack>
             </Box>
           ) : (
-            <Box
-              as="form"
+            <RootComposer
+              username={user?.username ?? ''}
+              composerMode={composerMode}
+              seed={rootComposerSeed}
               onSubmit={handleRootSubmit}
-              bg="white"
-              borderRadius="xl"
-              boxShadow="sm"
-              p={{ base: 5, md: 6 }}
-            >
-              <VStack align="stretch" spacing={5}>
-                <Heading size="sm" color="gray.800">
-                  Add to the conversation
-                </Heading>
-
-                <Text fontSize="sm" color="gray.500">
-                  Signed in as <strong>{user?.username}</strong>
-                </Text>
-
-                <FormControl isRequired>
-                  <FormLabel fontSize="sm" color="gray.600">
-                    Message
-                  </FormLabel>
-                  <RichTextEditor
-                    value={rootMessage}
-                    onChange={handleRootEditorChange}
-                    placeholder="Share your thoughts, references, or questions..."
-                    ariaLabel="Channel message"
-                    minHeight="160px"
-                    isDisabled={isRootSubmitting || isSavingDraft}
-                  />
-                </FormControl>
-
-                {rootSubmitError && (
-                  <Alert status="error" borderRadius="md">
-                    <AlertIcon />
-                    {rootSubmitError}
-                  </Alert>
-                )}
-                <HStack justify="space-between" flexWrap="wrap" spacing={3} align="center">
-                  <Text fontSize="xs" color="gray.500">
-                    Composer mode: {composerMode === 'draft' ? 'Draft' : 'Publish'}
-                  </Text>
-                  <HStack spacing={3}>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      colorScheme="purple"
-                      onClick={handleSaveDraft}
-                      isLoading={isSavingDraft}
-                      isDisabled={isRootSaveDisabled}
-                    >
-                      Save draft
-                    </Button>
-                    <Button
-                      type="submit"
-                      colorScheme="navy"
-                      color="white"
-                      bg="navy.800"
-                      _hover={{ bg: 'navy.700' }}
-                      isLoading={isRootSubmitting}
-                      isDisabled={isRootSubmitDisabled}
-                    >
-                      Send message
-                    </Button>
-                  </HStack>
-                </HStack>
-              </VStack>
-            </Box>
+              onSaveDraft={handleSaveDraft}
+            />
           )}
         </VStack>
       </Box>
     </Box>
   );
 };
+
+interface RootComposerProps {
+  username?: string;
+  composerMode: 'draft' | 'publish';
+  seed: ComposerSeed;
+  onSubmit: (content: string) => Promise<void>;
+  onSaveDraft: (content: string) => Promise<void>;
+}
+
+const RootComposer = memo(({ username, composerMode, seed, onSubmit, onSaveDraft }: RootComposerProps) => {
+  const [value, setValue] = useState(seed.content);
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    setValue(seed.content);
+    setError(null);
+  }, [seed.content, seed.revision]);
+
+  const sanitizedValue = useMemo(() => sanitizeRichText(value), [value]);
+  const isContentEmpty = useMemo(() => isRichTextEmpty(sanitizedValue), [sanitizedValue]);
+
+  const handleEditorChange = useCallback(
+    (nextHtml: string) => {
+      setValue(nextHtml);
+      if (error) {
+        setError(null);
+      }
+    },
+    [error],
+  );
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (isSubmitting || isSaving || isContentEmpty) {
+      return;
+    }
+    setIsSubmitting(true);
+    setError(null);
+    try {
+      await onSubmit(value);
+      setValue('');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unable to send your message right now. Please try again.';
+      setError(message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSaveDraftClick = async () => {
+    if (isSaving || isSubmitting || isContentEmpty) {
+      return;
+    }
+    setIsSaving(true);
+    setError(null);
+    try {
+      await onSaveDraft(value);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unable to save your draft right now. Please try again.';
+      setError(message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const isEditorDisabled = isSubmitting || isSaving;
+  const isSaveDisabled = isContentEmpty || isEditorDisabled;
+  const isSubmitDisabled = isContentEmpty || isEditorDisabled;
+
+  return (
+    <Box
+      as="form"
+      onSubmit={handleSubmit}
+      bg="white"
+      borderRadius="xl"
+      boxShadow="sm"
+      p={{ base: 5, md: 6 }}
+    >
+      <VStack align="stretch" spacing={5}>
+        <Heading size="sm" color="gray.800">
+          Add to the conversation
+        </Heading>
+
+        <Text fontSize="sm" color="gray.500">
+          Signed in as <strong>{username}</strong>
+        </Text>
+
+        <FormControl isRequired>
+          <FormLabel fontSize="sm" color="gray.600">
+            Message
+          </FormLabel>
+          <RichTextEditor
+            value={value}
+            onChange={handleEditorChange}
+            placeholder="Share your thoughts, references, or questions..."
+            ariaLabel="Channel message"
+            minHeight="160px"
+            isDisabled={isEditorDisabled}
+          />
+        </FormControl>
+
+        {error && (
+          <Alert status="error" borderRadius="md">
+            <AlertIcon />
+            {error}
+          </Alert>
+        )}
+        <HStack justify="space-between" flexWrap="wrap" spacing={3} align="center">
+          <Text fontSize="xs" color="gray.500">
+            Composer mode: {composerMode === 'draft' ? 'Draft' : 'Publish'}
+          </Text>
+          <HStack spacing={3}>
+            <Button
+              type="button"
+              variant="outline"
+              colorScheme="purple"
+              onClick={handleSaveDraftClick}
+              isLoading={isSaving}
+              isDisabled={isSaveDisabled}
+            >
+              Save draft
+            </Button>
+            <Button
+              type="submit"
+              colorScheme="navy"
+              color="white"
+              bg="navy.800"
+              _hover={{ bg: 'navy.700' }}
+              isLoading={isSubmitting}
+              isDisabled={isSubmitDisabled}
+            >
+              Send message
+            </Button>
+          </HStack>
+        </HStack>
+      </VStack>
+    </Box>
+  );
+});
 
 export default Channel;
