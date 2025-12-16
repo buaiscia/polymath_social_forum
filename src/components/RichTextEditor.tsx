@@ -31,6 +31,7 @@ import Placeholder from '@tiptap/extension-placeholder';
 import Underline from '@tiptap/extension-underline';
 import { TextStyle } from '@tiptap/extension-text-style';
 import Link from '@tiptap/extension-link';
+import type { Level } from '@tiptap/extension-heading';
 import { getPlainTextFromHtml } from '../utils/sanitizeHtml';
 import {
   MdInsertLink,
@@ -68,7 +69,7 @@ type ToolbarButton = {
 
 type TextStyleOption = {
   label: string;
-  level: number | null;
+  level: Level | null;
 };
 
 type FontSizeOption = {
@@ -505,7 +506,7 @@ const RichTextToolbar = memo(function RichTextToolbarComponent({ editor, isDisab
   const activeTextStyleLevel = toolbarSnapshot?.textStyleLevel ?? null;
   const activeTextStyle = textStyleOptions.find((option) => option.level === activeTextStyleLevel) ?? textStyleOptions[0];
 
-  const handleTextStyleChange = (level: number | null) => {
+  const handleTextStyleChange = (level: Level | null) => {
     if (!editor) return;
     let chain = editor.chain().focus().unsetMark('textStyle');
     if (level) {
