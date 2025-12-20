@@ -1,4 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { FormEvent } from 'react';
 import {
   Alert,
   AlertIcon,
@@ -185,6 +186,21 @@ const formatDate = (dateString?: string) => {
 
 const replyCountLabel = (count: number) => `${count} repl${count === 1 ? 'y' : 'ies'}`;
 
+const stripHtmlToPlainText = (html: string) => {
+  if (!html) {
+    return '';
+  }
+  return html
+    .replace(/<(script|style)[^>]*>[\s\S]*?<\/\1>/gi, ' ')
+    .replace(/<br\s*\/?>(?=\s|$)/gi, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+
+const hasVisibleTextContent = (html: string) => Boolean(stripHtmlToPlainText(html));
+
 const wasMessageEdited = (message: MessageType) => {
   if (message.isDraft || message.isPlaceholder) {
     return false;
@@ -264,7 +280,13 @@ const Channel = () => {
   }, []);
   const [publishingDraftId, setPublishingDraftId] = useState<string | null>(null);
   const [replyParentId, setReplyParentId] = useState<string | null>(null);
-  const [replyMessage, setReplyMessage] = useState('');
+  const [replyEditorSeed, setReplyEditorSeed] = useState<ComposerSeed>({
+    content: '',
+    revision: 0,
+  });
+  const bumpReplyEditorSeed = useCallback((content: string) => {
+    setReplyEditorSeed((prev) => ({ content, revision: prev.revision + 1 }));
+  }, []);
   const [replySubmitError, setReplySubmitError] = useState<string | null>(null);
   const [isReplySubmitting, setIsReplySubmitting] = useState(false);
   const [activeReplyDraftId, setActiveReplyDraftId] = useState<string | null>(null);
@@ -273,10 +295,6 @@ const Channel = () => {
   const lastKnownDraftIdRef = useRef<string | null>(null);
   const replyDraftMetaRef = useRef<Record<string, { id: string; content: string }>>({});
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
-  const [editingMessageContent, setEditingMessageContent] = useState('');
-  const [editingMessageParentId, setEditingMessageParentId] = useState<string | null>(null);
-  const [isEditingDraft, setIsEditingDraft] = useState(false);
-  const [editingMessageError, setEditingMessageError] = useState<string | null>(null);
   const [inlineMessageSavingId, setInlineMessageSavingId] = useState<string | null>(null);
   const [messagePendingDeletion, setMessagePendingDeletion] = useState<MessageType | null>(null);
   const [isDeletingMessageId, setIsDeletingMessageId] = useState<string | null>(null);
@@ -362,12 +380,13 @@ const Channel = () => {
   useEffect(() => {
     if (!replyParentId) {
       setActiveReplyDraftId(null);
-      setReplyMessage('');
+      bumpReplyEditorSeed('');
       return;
     }
 
     if (!authUserId) {
       setActiveReplyDraftId(null);
+      bumpReplyEditorSeed('');
       return;
     }
 
@@ -381,7 +400,7 @@ const Channel = () => {
     if (existingDraft) {
       const cached = replyDraftMetaRef.current[replyParentId];
       if (!cached || cached.id !== existingDraft._id || cached.content !== existingDraft.content) {
-        setReplyMessage(sanitizeRichText(existingDraft.content));
+        bumpReplyEditorSeed(sanitizeRichText(existingDraft.content));
         replyDraftMetaRef.current[replyParentId] = {
           id: existingDraft._id,
           content: existingDraft.content,
@@ -391,8 +410,9 @@ const Channel = () => {
     } else {
       delete replyDraftMetaRef.current[replyParentId];
       setActiveReplyDraftId(null);
+      bumpReplyEditorSeed('');
     }
-  }, [messages, replyParentId, authUserId]);
+  }, [messages, replyParentId, authUserId, bumpReplyEditorSeed]);
 
   const { primaryMessage, primaryChildren, otherThreads } = useMemo(
     () => buildThreadStructure(messages),
@@ -421,15 +441,6 @@ const Channel = () => {
   const canMessageReceiveReplies = (message?: MessageType | null) =>
     Boolean(message && !message.isDraft && !message.isOrphaned && !message.isPlaceholder);
 
-  const handleReplyEditorChange = useCallback(
-    (nextHtml: string) => {
-      const sanitized = sanitizeRichText(nextHtml);
-      if (replySubmitError && !isRichTextEmpty(sanitized)) setReplySubmitError(null);
-      setReplyMessage(sanitized);
-    },
-    [replySubmitError]
-  );
-
   const clearReplyDraftMetaEntry = (parentId?: string | null) => {
     if (parentId && replyDraftMetaRef.current[parentId]) {
       delete replyDraftMetaRef.current[parentId];
@@ -439,7 +450,7 @@ const Channel = () => {
   const handleReplyCancel = () => {
     const previousParentId = replyParentId;
     setReplyParentId(null);
-    setReplyMessage('');
+    bumpReplyEditorSeed('');
     setReplySubmitError(null);
     setActiveReplyDraftId(null);
     clearReplyDraftMetaEntry(previousParentId);
@@ -470,7 +481,7 @@ const Channel = () => {
       return;
     }
     setReplyParentId(messageId);
-    setReplyMessage('');
+    bumpReplyEditorSeed('');
     setReplySubmitError(null);
     setActiveReplyDraftId(null);
   };
@@ -479,20 +490,11 @@ const Channel = () => {
     if (!canEditMessage(message)) {
       return;
     }
-
     setEditingMessageId(message._id);
-    setEditingMessageContent(sanitizeRichText(message.content));
-    setEditingMessageParentId(message.parentMessage ?? null);
-    setIsEditingDraft(Boolean(message.isDraft));
-    setEditingMessageError(null);
   };
 
   const stopEditingMessage = () => {
     setEditingMessageId(null);
-    setEditingMessageContent('');
-    setEditingMessageParentId(null);
-    setIsEditingDraft(false);
-    setEditingMessageError(null);
     setInlineMessageSavingId(null);
   };
 
@@ -547,16 +549,15 @@ const Channel = () => {
     }
   };
 
-  const handleReplySubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const sanitizedContent = sanitizeRichText(replyMessage);
+  const handleReplySubmit = async (content: string) => {
+    const sanitizedContent = sanitizeRichText(content);
 
     if (!id || !replyParentId || isRichTextEmpty(sanitizedContent)) {
-      return;
+      throw new Error('Reply cannot be empty.');
     }
 
     if (!ensureAuthenticated()) {
-      return;
+      throw new Error('You must be logged in to send replies.');
     }
 
     const parentId = replyParentId;
@@ -590,21 +591,25 @@ const Channel = () => {
     } catch (err) {
       console.error('Failed to send reply:', err);
       setReplySubmitError('Unable to send your reply right now. Please try again.');
+      throw new Error('Unable to send your reply right now. Please try again.');
     } finally {
       setIsReplySubmitting(false);
     }
   };
 
-  const handleReplySaveDraft = async (options: { closeAfterSave?: boolean } = {}) => {
+  const handleReplySaveDraft = async (
+    content: string,
+    options: { closeAfterSave?: boolean } = {},
+  ) => {
     const { closeAfterSave = false } = options;
-    const sanitizedContent = sanitizeRichText(replyMessage);
+    const sanitizedContent = sanitizeRichText(content);
 
     if (!id || !replyParentId || isRichTextEmpty(sanitizedContent)) {
-      return;
+      throw new Error('Draft cannot be empty.');
     }
 
     if (!ensureAuthenticated()) {
-      return;
+      throw new Error('You must be logged in to save drafts.');
     }
 
     try {
@@ -646,6 +651,7 @@ const Channel = () => {
     } catch (err) {
       console.error('Failed to save reply draft:', err);
       setReplySubmitError('Unable to save your draft right now. Please try again.');
+      throw new Error('Unable to save your draft right now. Please try again.');
     } finally {
       setIsSavingReplyDraft(false);
     }
@@ -696,77 +702,66 @@ const Channel = () => {
     }
   };
 
-  const handleInlineMessageSave = async () => {
-    if (!editingMessageId) {
-      return;
-    }
-
-    const sanitizedContent = sanitizeRichText(editingMessageContent);
+  const handleInlineMessageSave = async (message: MessageType, content: string) => {
+    const sanitizedContent = sanitizeRichText(content);
 
     if (isRichTextEmpty(sanitizedContent)) {
-      setEditingMessageError('Message cannot be empty.');
-      return;
+      throw new Error('Message cannot be empty.');
     }
 
     if (!ensureAuthenticated()) {
-      return;
+      throw new Error('You must be logged in to update messages.');
     }
 
     try {
-      setInlineMessageSavingId(editingMessageId);
-      setEditingMessageError(null);
+      setInlineMessageSavingId(message._id);
 
       const payload: Record<string, unknown> = { content: sanitizedContent };
-      if (isEditingDraft) {
+      if (message.isDraft) {
         payload.isDraft = true;
       }
 
-      const response = await axios.patch<MessageType>(`/messages/${editingMessageId}`, payload);
+      const response = await axios.patch<MessageType>(`/messages/${message._id}`, payload);
+      const updatedMessage = response.data;
 
-      upsertMessage(response.data);
-      setEditingMessageContent(sanitizedContent);
+      upsertMessage(updatedMessage);
 
-      if (isEditingDraft) {
-        if (!editingMessageParentId) {
+      if (updatedMessage.isDraft) {
+        if (!updatedMessage.parentMessage) {
           syncRootComposer(sanitizedContent);
-          setActiveDraftId(response.data._id);
-          lastKnownDraftIdRef.current = response.data._id;
+          setActiveDraftId(updatedMessage._id);
+          lastKnownDraftIdRef.current = updatedMessage._id;
         } else {
-          replyDraftMetaRef.current[editingMessageParentId] = {
-            id: response.data._id,
-            content: response.data.content,
+          replyDraftMetaRef.current[updatedMessage.parentMessage] = {
+            id: updatedMessage._id,
+            content: updatedMessage.content,
           };
         }
       }
 
       toast({
-        title: isEditingDraft ? 'Draft updated' : 'Message updated',
+        title: updatedMessage.isDraft ? 'Draft updated' : 'Message updated',
         status: 'success',
         duration: 3000,
         position: 'bottom-right',
       });
 
-      if (!isEditingDraft) {
+      if (!updatedMessage.isDraft) {
         stopEditingMessage();
       }
     } catch (err) {
       console.error('Failed to update message:', err);
-      setEditingMessageError('Unable to update your message right now. Please try again.');
+      throw new Error('Unable to update your message right now. Please try again.');
     } finally {
       setInlineMessageSavingId(null);
     }
   };
 
-  const handleInlineDraftPublish = async (message: MessageType) => {
-    if (!editingMessageId || editingMessageId !== message._id) {
-      return;
-    }
-
-    const sanitizedContent = sanitizeRichText(editingMessageContent);
+  const handleInlineDraftPublish = async (message: MessageType, content: string) => {
+    const sanitizedContent = sanitizeRichText(content);
 
     if (isRichTextEmpty(sanitizedContent)) {
-      setEditingMessageError('Message cannot be empty.');
-      return;
+      throw new Error('Message cannot be empty.');
     }
 
     await handlePublishDraft(message, sanitizedContent);
@@ -886,7 +881,7 @@ const Channel = () => {
           delete replyDraftMetaRef.current[message.parentMessage];
           if (replyParentId === message.parentMessage) {
             setReplyParentId(null);
-            setReplyMessage('');
+            bumpReplyEditorSeed('');
           }
         }
       }
@@ -912,107 +907,31 @@ const Channel = () => {
     }
   };
 
-  const isReplyContentEmpty = isRichTextEmpty(replyMessage);
-  const isReplySubmitDisabled = isReplyContentEmpty || isReplySubmitting || isSavingReplyDraft;
-  const isReplySaveDisabled = isReplyContentEmpty || isSavingReplyDraft || isReplySubmitting;
   const hasMessages = Boolean(primaryMessage || otherThreads.length);
   const pendingDeletionHasReplies = messagePendingDeletion
     ? messages.some((message) => message.parentMessage === messagePendingDeletion._id)
     : false;
 
   const renderReplyForm = () => {
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !replyParentId) {
       return null;
     }
 
     return (
-      <Box
-        as="form"
+      <ReplyComposer
+        key={replyParentId}
+        username={user?.username ?? ''}
+        seed={replyEditorSeed}
+        isSubmitting={isReplySubmitting}
+        isSavingDraft={isSavingReplyDraft}
+        errorMessage={replySubmitError}
+        onClearError={() => setReplySubmitError(null)}
+        onCancel={handleReplyCancel}
         onSubmit={handleReplySubmit}
-        mt={4}
-        bg="gray.50"
-        borderRadius="lg"
-        borderWidth="1px"
-        borderColor="gray.200"
-        p={4}
-      >
-        <VStack align="stretch" spacing={3}>
-          <Text fontSize="sm" color="gray.600">
-            Replying as <strong>{user?.username}</strong>
-          </Text>
-
-          <FormControl isRequired>
-            <FormLabel fontSize="sm" color="gray.600">
-              Reply
-            </FormLabel>
-            <RichTextEditor
-              value={replyMessage}
-              onChange={handleReplyEditorChange}
-              placeholder="Share your reply"
-              ariaLabel="Reply message"
-              minHeight="120px"
-              isDisabled={isReplySubmitting || isSavingReplyDraft}
-            />
-          </FormControl>
-
-          {replySubmitError && (
-            <Alert status="error" borderRadius="md">
-              <AlertIcon />
-              {replySubmitError}
-            </Alert>
-          )}
-
-          <HStack justify="flex-end" spacing={3}>
-            <Button type="button" variant="ghost" size="sm" onClick={handleReplyCancel}>
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              colorScheme="purple"
-              onClick={() => handleReplySaveDraft()}
-              isLoading={isSavingReplyDraft}
-              isDisabled={isReplySaveDisabled}
-            >
-              Save draft
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              colorScheme="purple"
-              onClick={() => handleReplySaveDraft({ closeAfterSave: true })}
-              isLoading={isSavingReplyDraft}
-              isDisabled={isReplySaveDisabled}
-            >
-              Save & close
-            </Button>
-            <Button
-              type="submit"
-              size="sm"
-              colorScheme="navy"
-              bg="navy.700"
-              color="white"
-              _hover={{ bg: 'navy.600' }}
-              isLoading={isReplySubmitting}
-              isDisabled={isReplySubmitDisabled}
-            >
-              Send reply
-            </Button>
-          </HStack>
-        </VStack>
-      </Box>
+        onSaveDraft={handleReplySaveDraft}
+      />
     );
   };
-
-  const handleInlineEditorChange = useCallback((nextHtml: string) => {
-    const sanitized = sanitizeRichText(nextHtml);
-    if (editingMessageError && !isRichTextEmpty(sanitized)) {
-      setEditingMessageError(null);
-    }
-    setEditingMessageContent(sanitized);
-  }, [editingMessageError]);
 
   const renderEditableDraftContent = (
     message: MessageType,
@@ -1050,52 +969,21 @@ const Channel = () => {
       );
     }
 
-    const isInlineSaving = inlineMessageSavingId === message._id;
-    const isInlinePublishing = publishingDraftId === message._id;
-    const disableInlineActions =
-      isRichTextEmpty(editingMessageContent) || isInlineSaving || isInlinePublishing;
-
     return (
-      <VStack align="stretch" spacing={2} mt={1}>
-        <RichTextEditor
-          value={editingMessageContent}
-          onChange={handleInlineEditorChange}
-          minHeight={`${textareaRows * 24}px`}
-          ariaLabel="Edit message"
-          isDisabled={isInlineSaving || isInlinePublishing}
-        />
-        {editingMessageError && (
-          <Text fontSize="sm" color="red.500">
-            {editingMessageError}
-          </Text>
-        )}
-        <HStack spacing={3} justify="flex-end" flexWrap="wrap">
-          <Button size={buttonSize} variant="ghost" onClick={stopEditingMessage}>
-            Cancel
-          </Button>
-          <Button
-            size={buttonSize}
-            variant="outline"
-            colorScheme="purple"
-            onClick={handleInlineMessageSave}
-            isLoading={isInlineSaving}
-            isDisabled={disableInlineActions}
-          >
-            {isEditingDraft ? 'Save draft' : 'Save changes'}
-          </Button>
-          {message.isDraft && (
-            <Button
-              size={buttonSize}
-              colorScheme="navy"
-              onClick={() => handleInlineDraftPublish(message)}
-              isLoading={isInlinePublishing}
-              isDisabled={disableInlineActions}
-            >
-              Publish
-            </Button>
-          )}
-        </HStack>
-      </VStack>
+      <InlineMessageEditor
+        key={message._id}
+        initialContent={sanitizeRichText(message.content)}
+        textareaRows={textareaRows}
+        buttonSize={buttonSize}
+        isDraft={Boolean(message.isDraft)}
+        isSaving={inlineMessageSavingId === message._id}
+        isPublishing={publishingDraftId === message._id}
+        onCancel={stopEditingMessage}
+        onSave={(html) => handleInlineMessageSave(message, html)}
+        onPublish={
+          message.isDraft ? (html) => handleInlineDraftPublish(message, html) : undefined
+        }
+      />
     );
   };
 
@@ -1704,6 +1592,288 @@ const Channel = () => {
   );
 };
 
+interface ReplyComposerProps {
+  username: string;
+  seed: ComposerSeed;
+  isSubmitting: boolean;
+  isSavingDraft: boolean;
+  errorMessage: string | null;
+  onSubmit: (content: string) => Promise<void>;
+  onSaveDraft: (content: string, options?: { closeAfterSave?: boolean }) => Promise<void>;
+  onCancel: () => void;
+  onClearError: () => void;
+}
+
+const ReplyComposer = memo(function ReplyComposerComponent({
+  username,
+  seed,
+  isSubmitting,
+  isSavingDraft,
+  errorMessage,
+  onSubmit,
+  onSaveDraft,
+  onCancel,
+  onClearError,
+}: ReplyComposerProps) {
+  const [value, setValue] = useState(seed.content);
+  const [localError, setLocalError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setValue(seed.content);
+    setLocalError(null);
+  }, [seed.content, seed.revision]);
+
+  const handleChange = useCallback(
+    (nextHtml: string) => {
+      if (localError && hasVisibleTextContent(nextHtml)) {
+        setLocalError(null);
+      }
+      if (errorMessage) {
+        onClearError();
+      }
+      setValue(nextHtml);
+    },
+    [localError, errorMessage, onClearError],
+  );
+
+  const hasContent = hasVisibleTextContent(value);
+  const isEditorDisabled = isSubmitting || isSavingDraft;
+  const disableDraftActions = !hasContent || isEditorDisabled;
+  const disableSubmit = !hasContent || isEditorDisabled;
+  const feedbackMessage = localError ?? errorMessage;
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (disableSubmit) {
+      if (!hasContent) {
+        setLocalError('Reply cannot be empty.');
+      }
+      return;
+    }
+    try {
+      await onSubmit(value);
+      setLocalError(null);
+      setValue('');
+    } catch (err) {
+      setLocalError(
+        err instanceof Error
+          ? err.message
+          : 'Unable to send your reply right now. Please try again.',
+      );
+    }
+  };
+
+  const handleSaveDraftClick = async (closeAfterSave = false) => {
+    if (disableDraftActions) {
+      if (!hasContent) {
+        setLocalError('Reply cannot be empty.');
+      }
+      return;
+    }
+    try {
+      await onSaveDraft(value, { closeAfterSave });
+      if (!closeAfterSave) {
+        setLocalError(null);
+      }
+    } catch (err) {
+      setLocalError(
+        err instanceof Error
+          ? err.message
+          : 'Unable to save your draft right now. Please try again.',
+      );
+    }
+  };
+
+  return (
+    <Box
+      as="form"
+      onSubmit={handleSubmit}
+      mt={4}
+      bg="gray.50"
+      borderRadius="lg"
+      borderWidth="1px"
+      borderColor="gray.200"
+      p={4}
+    >
+      <VStack align="stretch" spacing={3}>
+        <Text fontSize="sm" color="gray.600">
+          Replying as <strong>{username}</strong>
+        </Text>
+
+        <FormControl isRequired>
+          <FormLabel fontSize="sm" color="gray.600">
+            Reply
+          </FormLabel>
+          <RichTextEditor
+            value={value}
+            onChange={handleChange}
+            placeholder="Share your reply"
+            ariaLabel="Reply message"
+            minHeight="120px"
+            isDisabled={isEditorDisabled}
+          />
+        </FormControl>
+
+        {feedbackMessage && (
+          <Alert status="error" borderRadius="md">
+            <AlertIcon />
+            {feedbackMessage}
+          </Alert>
+        )}
+
+        <HStack justify="flex-end" spacing={3}>
+          <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            colorScheme="purple"
+            onClick={() => handleSaveDraftClick(false)}
+            isLoading={isSavingDraft}
+            isDisabled={disableDraftActions}
+          >
+            Save draft
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            colorScheme="purple"
+            onClick={() => handleSaveDraftClick(true)}
+            isLoading={isSavingDraft}
+            isDisabled={disableDraftActions}
+          >
+            Save & close
+          </Button>
+          <Button
+            type="submit"
+            size="sm"
+            colorScheme="navy"
+            bg="navy.700"
+            color="white"
+            _hover={{ bg: 'navy.600' }}
+            isLoading={isSubmitting}
+            isDisabled={disableSubmit}
+          >
+            Send reply
+          </Button>
+        </HStack>
+      </VStack>
+    </Box>
+  );
+});
+
+interface InlineMessageEditorProps {
+  initialContent: string;
+  textareaRows: number;
+  buttonSize: 'sm' | 'xs';
+  isDraft: boolean;
+  isSaving: boolean;
+  isPublishing: boolean;
+  onCancel: () => void;
+  onSave: (content: string) => Promise<void>;
+  onPublish?: (content: string) => Promise<void>;
+}
+
+const InlineMessageEditor = memo(function InlineMessageEditorComponent({
+  initialContent,
+  textareaRows,
+  buttonSize,
+  isDraft,
+  isSaving,
+  isPublishing,
+  onCancel,
+  onSave,
+  onPublish,
+}: InlineMessageEditorProps) {
+  const [value, setValue] = useState(initialContent);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setValue(initialContent);
+    setError(null);
+  }, [initialContent]);
+
+  const handleChange = useCallback(
+    (nextHtml: string) => {
+      if (error && hasVisibleTextContent(nextHtml)) {
+        setError(null);
+      }
+      setValue(nextHtml);
+    },
+    [error],
+  );
+
+  const hasContent = hasVisibleTextContent(value);
+  const isEditorDisabled = isSaving || isPublishing;
+  const disableActions = !hasContent || isEditorDisabled;
+
+  const runAction = useCallback(
+    async (action: (html: string) => Promise<void>) => {
+      if (!hasContent) {
+        setError('Message cannot be empty.');
+        return;
+      }
+      try {
+        await action(value);
+        setError(null);
+      } catch (err) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : 'Unable to update your message right now. Please try again.',
+        );
+      }
+    },
+    [hasContent, value],
+  );
+
+  return (
+    <VStack align="stretch" spacing={2} mt={1}>
+      <RichTextEditor
+        value={value}
+        onChange={handleChange}
+        minHeight={`${textareaRows * 24}px`}
+        ariaLabel="Edit message"
+        isDisabled={isEditorDisabled}
+      />
+      {error && (
+        <Text fontSize="sm" color="red.500">
+          {error}
+        </Text>
+      )}
+      <HStack spacing={3} justify="flex-end" flexWrap="wrap">
+        <Button size={buttonSize} variant="ghost" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button
+          size={buttonSize}
+          variant="outline"
+          colorScheme="purple"
+          onClick={() => runAction(onSave)}
+          isLoading={isSaving}
+          isDisabled={disableActions}
+        >
+          {isDraft ? 'Save draft' : 'Save changes'}
+        </Button>
+        {onPublish && (
+          <Button
+            size={buttonSize}
+            colorScheme="navy"
+            onClick={() => runAction(onPublish)}
+            isLoading={isPublishing}
+            isDisabled={disableActions}
+          >
+            Publish
+          </Button>
+        )}
+      </HStack>
+    </VStack>
+  );
+});
+
 interface RootComposerProps {
   username?: string;
   composerMode: 'draft' | 'publish';
@@ -1725,8 +1895,7 @@ const RootComposer = memo(function RootComposer({ username, composerMode, seed, 
     setError(null);
   }, [seed.content, seed.revision]);
 
-  const sanitizedValue = useMemo(() => sanitizeRichText(value), [value]);
-  const isContentEmpty = useMemo(() => isRichTextEmpty(sanitizedValue), [sanitizedValue]);
+  const isContentEmpty = useMemo(() => !hasVisibleTextContent(value), [value]);
 
   const handleEditorChange = useCallback(
     (nextHtml: string) => {
@@ -1739,7 +1908,7 @@ const RootComposer = memo(function RootComposer({ username, composerMode, seed, 
     [error],
   );
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (isSubmitting || isSaving || isContentEmpty) {
       return;

@@ -4,4 +4,4 @@ export {
   getPlainTextFromHtml,
   isRichTextEmpty,
   isValidEmailAddress,
-} from 'shared/sanitize';
+} from '../../shared/sanitize';
