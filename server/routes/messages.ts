@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import { Message } from '../models/Message';
 import { Channel } from '../models/Channel';
 import { optionalAuth, requireAuth } from '../middleware/auth';
+import { isRichTextEmpty, sanitizeRichText } from '../utils/sanitize';
 
 const router = express.Router();
 
@@ -93,7 +94,7 @@ router.post('/', requireAuth, async (req, res) => {
       return res.status(400).json({ message: 'Valid channelId is required' });
     }
 
-    if (!content || typeof content !== 'string' || content.trim().length === 0) {
+    if (!content || typeof content !== 'string' || isRichTextEmpty(content)) {
       return res.status(400).json({ message: 'Message content is required' });
     }
 
@@ -141,7 +142,7 @@ router.post('/', requireAuth, async (req, res) => {
       parentMessage: parentMessage ? parentMessage._id : undefined,
       authorId: req.user._id,
       author: authorName,
-      content: content.trim(),
+      content: sanitizeRichText(content),
       isDraft: Boolean(isDraft),
     });
 
@@ -165,7 +166,7 @@ router.patch('/:id', requireAuth, async (req, res) => {
       return res.status(400).json({ message: 'No valid fields provided for update' });
     }
 
-    if (content !== undefined && (typeof content !== 'string' || content.trim().length === 0)) {
+    if (content !== undefined && (typeof content !== 'string' || isRichTextEmpty(content))) {
       return res.status(400).json({ message: 'Content must be a non-empty string' });
     }
 
@@ -191,8 +192,7 @@ router.patch('/:id', requireAuth, async (req, res) => {
     const shouldIncrementVersion = !wasDraftBeforeUpdate && content !== undefined;
 
     if (content !== undefined) {
-      const trimmedContent = content.trim();
-      message.content = trimmedContent;
+      message.content = sanitizeRichText(content);
     }
 
     if (isDraft === true && !message.isDraft) {

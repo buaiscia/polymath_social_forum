@@ -4,9 +4,38 @@ import { Route, Routes } from 'react-router-dom';
 import axios from 'axios';
 import { renderWithRouter } from '../test/utils';
 import type { AuthUser } from '../context/authTypes';
+import { getPlainTextFromHtml } from '../utils/sanitizeHtml';
+import type { RichTextEditorProps } from './RichTextEditor';
 import Channel from './Channel';
 
 vi.mock('axios');
+vi.mock('./RichTextEditor', () => {
+  const MockRichTextEditor = ({
+    value,
+    onChange,
+    placeholder,
+    ariaLabel,
+    isDisabled,
+    minHeight,
+    dataTestId,
+  }: RichTextEditorProps) => {
+    const plainValue = getPlainTextFromHtml(value || '');
+    const resolvedMinHeight = typeof minHeight === 'number' ? `${minHeight}px` : minHeight;
+    return (
+      <textarea
+        data-testid={dataTestId}
+        placeholder={placeholder}
+        aria-label={ariaLabel}
+        disabled={isDisabled}
+        style={{ minHeight: resolvedMinHeight }}
+        value={plainValue}
+        onChange={(event) => onChange(`<p>${event.target.value}</p>`)}
+      />
+    );
+  };
+
+  return { default: MockRichTextEditor };
+});
 
 interface MockMessage {
   _id: string;
@@ -48,6 +77,8 @@ const mockAuthUser: AuthUser = {
   email: 'scholar@example.com',
   username: 'Scholar',
 };
+
+const asHtml = (text: string) => (text ? `<p>${text}</p>` : '');
 
 const renderChannel = () =>
   renderWithRouter(
@@ -136,7 +167,7 @@ describe('Channel messaging flow', () => {
         '/messages',
         {
           channelId: mockChannel._id,
-          content: 'Sharing a new idea.',
+          content: asHtml('Sharing a new idea.'),
         }
       );
       expect(screen.getAllByTestId('conversation-message')).toHaveLength(2);
@@ -236,7 +267,7 @@ describe('Channel messaging flow', () => {
         '/messages',
         {
           channelId: mockChannel._id,
-          content: 'Responding in-thread.',
+          content: asHtml('Responding in-thread.'),
           parentMessageId: initialMessage._id,
         },
       );
@@ -305,7 +336,7 @@ describe('Channel messaging flow', () => {
     await waitFor(() => {
       expect(axios.post).toHaveBeenCalledWith('/messages', {
         channelId: mockChannel._id,
-        content: 'Draft exploration.',
+        content: asHtml('Draft exploration.'),
         isDraft: true,
       });
       expect(messageInput).toHaveValue('Draft exploration.');
@@ -355,7 +386,7 @@ describe('Channel messaging flow', () => {
 
     await waitFor(() => {
       expect(axios.patch).toHaveBeenCalledWith(`/messages/${draftResponse._id}`, {
-        content: 'Refined thought',
+        content: '<p>Refined thought</p>',
         isDraft: true,
       });
     });
@@ -367,7 +398,7 @@ describe('Channel messaging flow', () => {
       channel: mockChannel._id,
       author: mockAuthUser.username,
       authorId: mockAuthUser._id,
-      content: 'Publish me',
+      content: '<p>Publish me</p>',
       createdAt: '2025-08-09T00:30:00.000Z',
       isDraft: true,
     };
@@ -387,7 +418,7 @@ describe('Channel messaging flow', () => {
 
     await waitFor(() => {
       expect(axios.patch).toHaveBeenCalledWith(`/messages/${existingDraft._id}`, {
-        content: 'Publish me',
+        content: '<p>Publish me</p>',
         publish: true,
       });
       expect(screen.getByPlaceholderText(/share your thoughts/i)).toHaveValue('');
@@ -480,7 +511,7 @@ describe('Channel messaging flow', () => {
 
     await waitFor(() => {
       expect(axios.patch).toHaveBeenCalledWith(`/messages/${rootDraft._id}`, {
-        content: 'Refined inline hypothesis.',
+        content: asHtml('Refined inline hypothesis.'),
         isDraft: true,
       });
     });
@@ -532,7 +563,7 @@ describe('Channel messaging flow', () => {
 
     await waitFor(() => {
       expect(axios.patch).toHaveBeenCalledWith(`/messages/${ownedRoot._id}`, {
-        content: 'Updated root insight.',
+        content: asHtml('Updated root insight.'),
       });
     });
 
@@ -622,7 +653,7 @@ describe('Channel messaging flow', () => {
     await waitFor(() => {
       expect(axios.post).toHaveBeenCalledWith('/messages', {
         channelId: mockChannel._id,
-        content: 'Reply draft text.',
+        content: asHtml('Reply draft text.'),
         parentMessageId: initialMessage._id,
         isDraft: true,
       });
@@ -666,7 +697,7 @@ describe('Channel messaging flow', () => {
     await waitFor(() => {
       expect(axios.post).toHaveBeenCalledWith('/messages', {
         channelId: mockChannel._id,
-        content: 'Reply draft text.',
+        content: asHtml('Reply draft text.'),
         parentMessageId: initialMessage._id,
         isDraft: true,
       });
@@ -723,7 +754,7 @@ describe('Channel messaging flow', () => {
     await waitFor(() => {
       expect(axios.post).toHaveBeenCalledWith('/messages', {
         channelId: mockChannel._id,
-        content: 'Reply draft close.',
+        content: asHtml('Reply draft close.'),
         parentMessageId: initialMessage._id,
         isDraft: true,
       });
@@ -775,7 +806,7 @@ describe('Channel messaging flow', () => {
 
     await waitFor(() => {
       expect(axios.patch).toHaveBeenCalledWith(`/messages/${existingReplyDraft._id}`, {
-        content: 'Refined reply draft.',
+        content: asHtml('Refined reply draft.'),
         isDraft: true,
       });
     });
@@ -826,7 +857,7 @@ describe('Channel messaging flow', () => {
     await waitFor(() => {
       expect(axios.patch).toHaveBeenCalledWith(`/messages/${replyDraft._id}`, {
         publish: true,
-        content: 'Finalized inline reply.',
+        content: asHtml('Finalized inline reply.'),
       });
     });
 
@@ -896,7 +927,7 @@ describe('Channel messaging flow', () => {
 
     await waitFor(() => {
       expect(axios.patch).toHaveBeenCalledWith(`/messages/${ownedReply._id}`, {
-        content: 'Revised owned reply.',
+        content: asHtml('Revised owned reply.'),
       });
     });
 
@@ -927,7 +958,7 @@ describe('Channel messaging flow', () => {
       expect(screen.getByText('Draft slated for deletion')).toBeInTheDocument();
     });
 
-    const [draftMessageNode] = screen.getAllByText('Draft slated for deletion', { selector: 'p' });
+    const [draftMessageNode] = screen.getAllByText('Draft slated for deletion');
     expect(draftMessageNode).toBeDefined();
     const draftCard = draftMessageNode?.closest('[data-testid="conversation-message"]');
     expect(draftCard).not.toBeNull();
