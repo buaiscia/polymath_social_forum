@@ -283,8 +283,6 @@ export const RichTextEditor = ({
           aria-label={ariaLabel}
           className="rich-text-editor__content"
           style={{ minHeight }}
-          id={ariaLabel}
-          aria-labelledby={ariaLabel}
         />
       </Box>
       <style>{`

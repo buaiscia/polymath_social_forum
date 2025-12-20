@@ -427,7 +427,7 @@ const Channel = () => {
       if (replySubmitError && !isRichTextEmpty(sanitized)) setReplySubmitError(null);
       setReplyMessage(sanitized);
     },
-    [replySubmitError, setReplySubmitError, setReplyMessage]
+    [replySubmitError]
   );
 
   const clearReplyDraftMetaEntry = (parentId?: string | null) => {
@@ -1749,6 +1749,7 @@ const RootComposer = memo(function RootComposer({ username, composerMode, seed, 
     try {
       await onSubmit(liveValueRef.current);
       liveValueRef.current = '';
+      setValue('');
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unable to send your message right now. Please try again.';
       setError(message);

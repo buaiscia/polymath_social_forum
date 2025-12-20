@@ -25,9 +25,26 @@ const allowedTags = [
 ];
 
 const allowedAttributes: sanitizeHtmlLib.IOptions['allowedAttributes'] = {
-  a: ['href', 'rel', 'target'],
-  span: ['style'],
-  '*': ['class'],
+  a: ['href', 'rel', 'target', 'class'],
+  span: ['style', 'class'],
+  p: ['class'],
+  br: ['class'],
+  strong: ['class'],
+  em: ['class'],
+  u: ['class'],
+  s: ['class'],
+  blockquote: ['class'],
+  code: ['class'],
+  pre: ['class'],
+  ul: ['class'],
+  ol: ['class'],
+  li: ['class'],
+  h1: ['class'],
+  h2: ['class'],
+  h3: ['class'],
+  h4: ['class'],
+  h5: ['class'],
+  h6: ['class'],
 };
 
 const allowedStyles: sanitizeHtmlLib.IOptions['allowedStyles'] = {
@@ -112,4 +129,9 @@ export const sanitizeRichText = (dirty: string) => {
 export const getPlainTextFromHtml = (html: string) =>
   extractPlainText(sanitizeRichText(html));
 
-export const isRichTextEmpty = (html: string) => sanitizeRichText(html) === '';
+export const isRichTextEmpty = (html: string) => {
+  if (!html || !html.trim()) {
+    return true;
+  }
+  return sanitizeRichText(html) === '';
+};
