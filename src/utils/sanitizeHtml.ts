@@ -1,4 +1,5 @@
 import sanitizeHtmlLib from 'sanitize-html';
+import isEmail from 'validator/lib/isEmail';
 
 const allowedTags = [
   'p',
@@ -58,7 +59,7 @@ const normalizeHref = (value?: string | null) => {
   }
   if (trimmed.toLowerCase().startsWith('mailto:')) {
     const email = trimmed.slice(7);
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? `mailto:${email}` : null;
+    return isValidEmailAddress(email) ? `mailto:${email}` : null;
   }
   try {
     const parsed = new URL(trimmed);
@@ -68,32 +69,41 @@ const normalizeHref = (value?: string | null) => {
   }
 };
 
-export const sanitizeRichText = (dirty: string) =>
-  (() => {
-    const sanitized = sanitizeHtmlLib(dirty, {
-      allowedTags,
-      allowedAttributes,
-      allowedStyles,
-      allowedSchemes,
-      allowProtocolRelative: false,
-      transformTags: {
-        a: (tagName, attribs) => {
-          const safeHref = normalizeHref(attribs.href);
-          if (!safeHref) {
-            return 'span';
-          }
-          return linkTransform(tagName, { ...attribs, href: safeHref });
-        },
+export const isValidEmailAddress = (value: string) => {
+  if (!value) {
+    return false;
+  }
+  return isEmail(value.trim(), {
+    allow_utf8_local_part: false,
+    ignore_max_length: false,
+  });
+};
+
+export const sanitizeRichText = (dirty: string) => {
+  const sanitized = sanitizeHtmlLib(dirty, {
+    allowedTags,
+    allowedAttributes,
+    allowedStyles,
+    allowedSchemes,
+    allowProtocolRelative: false,
+    transformTags: {
+      a: (tagName, attribs) => {
+        const safeHref = normalizeHref(attribs.href);
+        if (!safeHref) {
+          return 'span';
+        }
+        return linkTransform(tagName, { ...attribs, href: safeHref });
       },
-      parser: {
-        lowerCaseTags: true,
-      },
-    }).trim();
-    if (!sanitized) {
-      return '';
-    }
-    return extractPlainText(sanitized) ? sanitized : '';
-  })();
+    },
+    parser: {
+      lowerCaseTags: true,
+    },
+  }).trim();
+  if (!sanitized) {
+    return '';
+  }
+  return extractPlainText(sanitized) ? sanitized : '';
+};
 
 export const getPlainTextFromHtml = (html: string) =>
   extractPlainText(sanitizeRichText(html));

@@ -1711,12 +1711,14 @@ interface RootComposerProps {
 
 const RootComposer = memo(({ username, composerMode, seed, onSubmit, onSaveDraft }: RootComposerProps) => {
   const [value, setValue] = useState(seed.content);
+  const liveValueRef = useRef(value);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     setValue(seed.content);
+    liveValueRef.current = seed.content;
     setError(null);
   }, [seed.content, seed.revision]);
 
@@ -1725,6 +1727,7 @@ const RootComposer = memo(({ username, composerMode, seed, onSubmit, onSaveDraft
 
   const handleEditorChange = useCallback(
     (nextHtml: string) => {
+      liveValueRef.current = nextHtml;
       setValue(nextHtml);
       if (error) {
         setError(null);
@@ -1741,8 +1744,8 @@ const RootComposer = memo(({ username, composerMode, seed, onSubmit, onSaveDraft
     setIsSubmitting(true);
     setError(null);
     try {
-      await onSubmit(value);
-      setValue('');
+      await onSubmit(liveValueRef.current);
+      liveValueRef.current = '';
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unable to send your message right now. Please try again.';
       setError(message);
@@ -1758,7 +1761,7 @@ const RootComposer = memo(({ username, composerMode, seed, onSubmit, onSaveDraft
     setIsSaving(true);
     setError(null);
     try {
-      await onSaveDraft(value);
+      await onSaveDraft(liveValueRef.current);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unable to save your draft right now. Please try again.';
       setError(message);

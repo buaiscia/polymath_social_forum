@@ -17,7 +17,6 @@ import {
   PopoverBody,
   PopoverContent,
   PopoverTrigger,
-  Textarea,
   Text,
   Tooltip,
   VStack,
@@ -32,7 +31,7 @@ import Underline from '@tiptap/extension-underline';
 import { TextStyle } from '@tiptap/extension-text-style';
 import Link from '@tiptap/extension-link';
 import type { Level } from '@tiptap/extension-heading';
-import { getPlainTextFromHtml } from '../utils/sanitizeHtml';
+import { isValidEmailAddress } from '../utils/sanitizeHtml';
 import {
   MdInsertLink,
   MdFormatBold,
@@ -55,6 +54,7 @@ export interface RichTextEditorProps {
   isDisabled?: boolean;
   minHeight?: string | number;
   dataTestId?: string;
+  onEditorCreated?: (editor: Editor) => void;
 }
 
 type ToolbarButton = {
@@ -87,7 +87,7 @@ const normalizeLinkHref = (rawValue: string) => {
   }
   const hasProtocol = /^[a-zA-Z][\w+.-]*:/.test(value);
   if (!hasProtocol) {
-    if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+    if (isValidEmailAddress(value)) {
       value = `mailto:${value}`;
     } else {
       value = `https://${value}`;
@@ -95,7 +95,7 @@ const normalizeLinkHref = (rawValue: string) => {
   }
   if (value.toLowerCase().startsWith('mailto:')) {
     const email = value.slice(7);
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? `mailto:${email}` : null;
+    return isValidEmailAddress(email) ? `mailto:${email}` : null;
   }
   try {
     const parsed = new URL(value);
@@ -220,10 +220,8 @@ export const RichTextEditor = ({
   isDisabled,
   minHeight = '120px',
   dataTestId,
+  onEditorCreated,
 }: RichTextEditorProps) => {
-  const isTestEnv = Boolean(import.meta.env?.VITEST);
-
-
   const editor = useEditor({
     extensions: [
       TextStyle,
@@ -254,6 +252,12 @@ export const RichTextEditor = ({
   });
 
   useEffect(() => {
+    if (editor && onEditorCreated) {
+      onEditorCreated(editor);
+    }
+  }, [editor, onEditorCreated]);
+
+  useEffect(() => {
     if (!editor) return;
     const current = editor.getHTML();
     if (value !== current) {
@@ -269,22 +273,6 @@ export const RichTextEditor = ({
   const bg = useColorModeValue('white', 'gray.800');
   const border = useColorModeValue('gray.200', 'gray.700');
 
-  if (isTestEnv) {
-    const plainValue = getPlainTextFromHtml(value);
-    return (
-      <Box borderWidth="1px" borderRadius="lg" borderColor="gray.200" data-testid={dataTestId}>
-        <Textarea
-          value={plainValue}
-          onChange={(event) => onChange(event.target.value)}
-          placeholder={placeholder}
-          aria-label={ariaLabel}
-          minHeight={minHeight}
-          isDisabled={isDisabled}
-        />
-      </Box>
-    );
-  }
-
 
   return (
     <Box borderWidth="1px" borderColor={border} borderRadius="lg" bg={bg} data-testid={dataTestId}>
@@ -295,6 +283,8 @@ export const RichTextEditor = ({
           aria-label={ariaLabel}
           className="rich-text-editor__content"
           style={{ minHeight }}
+          id={ariaLabel}
+          aria-labelledby={ariaLabel}
         />
       </Box>
       <style>{`
