@@ -1,15 +1,20 @@
-import { Box } from '@chakra-ui/react';
+import { Box, useColorModeValue } from '@chakra-ui/react';
 import type { BoxProps } from '@chakra-ui/react';
 import { useMemo } from 'react';
 import { sanitizeRichText } from '../utils/sanitizeHtml';
 
 interface RichTextRendererProps extends BoxProps {
-  content: string;
+  content?: string;
 }
 
 export const RichTextRenderer = ({ content, className, sx, ...boxProps }: RichTextRendererProps) => {
   const sanitized = useMemo(() => sanitizeRichText(content || ''), [content]);
   const combinedClassName = ['rich-text-renderer', className].filter(Boolean).join(' ');
+
+  const linkColor = useColorModeValue('purple.700', 'purple.300');
+  const codeBackgroundColor = useColorModeValue('gray.100', 'gray.700');
+  const blockquoteBorderColor = useColorModeValue('purple.400', 'purple.500');
+  const blockquoteTextColor = useColorModeValue('navy.700', 'gray.300');
 
   return (
     <Box
@@ -20,7 +25,7 @@ export const RichTextRenderer = ({ content, className, sx, ...boxProps }: RichTe
         '& strong': { fontWeight: 600 },
         '& u': { textDecoration: 'underline' },
         '& a': {
-          color: '#5b21b6',
+          color: linkColor,
           textDecoration: 'underline',
           fontWeight: 500,
         },
@@ -65,13 +70,14 @@ export const RichTextRenderer = ({ content, className, sx, ...boxProps }: RichTe
           fontFamily: 'Menlo, Consolas, monospace',
           fontSize: '0.95em',
           padding: '0 0.25em',
-          backgroundColor: 'rgba(15, 23, 42, 0.05)',
+          backgroundColor: codeBackgroundColor,
           borderRadius: '0.25rem',
         },
         '& blockquote': {
-          borderLeft: '4px solid rgba(99, 102, 241, 0.4)',
+          borderLeft: `4px solid`,
+          borderColor: blockquoteBorderColor,
           paddingLeft: '0.75rem',
-          color: 'rgba(15, 23, 42, 0.8)',
+          color: blockquoteTextColor,
           margin: '0.75rem 0',
         },
         ...sx,

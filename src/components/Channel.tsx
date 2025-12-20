@@ -421,11 +421,14 @@ const Channel = () => {
   const canMessageReceiveReplies = (message?: MessageType | null) =>
     Boolean(message && !message.isDraft && !message.isOrphaned && !message.isPlaceholder);
 
-  const handleReplyEditorChange = (nextHtml: string) => {
-    const sanitized = sanitizeRichText(nextHtml);
-    if (replySubmitError && !isRichTextEmpty(sanitized)) setReplySubmitError(null);
-    setReplyMessage(sanitized);
-  };
+  const handleReplyEditorChange = useCallback(
+    (nextHtml: string) => {
+      const sanitized = sanitizeRichText(nextHtml);
+      if (replySubmitError && !isRichTextEmpty(sanitized)) setReplySubmitError(null);
+      setReplyMessage(sanitized);
+    },
+    [replySubmitError, setReplySubmitError, setReplyMessage]
+  );
 
   const clearReplyDraftMetaEntry = (parentId?: string | null) => {
     if (parentId && replyDraftMetaRef.current[parentId]) {
@@ -1003,13 +1006,13 @@ const Channel = () => {
     );
   };
 
-  const handleInlineEditorChange = (nextHtml: string) => {
+  const handleInlineEditorChange = useCallback((nextHtml: string) => {
     const sanitized = sanitizeRichText(nextHtml);
     if (editingMessageError && !isRichTextEmpty(sanitized)) {
       setEditingMessageError(null);
     }
     setEditingMessageContent(sanitized);
-  };
+  }, [editingMessageError]);
 
   const renderEditableDraftContent = (
     message: MessageType,
@@ -1709,7 +1712,7 @@ interface RootComposerProps {
   onSaveDraft: (content: string) => Promise<void>;
 }
 
-const RootComposer = memo(({ username, composerMode, seed, onSubmit, onSaveDraft }: RootComposerProps) => {
+const RootComposer = memo(function RootComposer({ username, composerMode, seed, onSubmit, onSaveDraft }: RootComposerProps) {
   const [value, setValue] = useState(seed.content);
   const liveValueRef = useRef(value);
   const [error, setError] = useState<string | null>(null);

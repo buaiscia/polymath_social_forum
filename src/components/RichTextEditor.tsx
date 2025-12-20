@@ -272,7 +272,7 @@ export const RichTextEditor = ({
 
   const bg = useColorModeValue('white', 'gray.800');
   const border = useColorModeValue('gray.200', 'gray.700');
-
+  const linkColor = useColorModeValue('#5b21b6', '#b794f6');
 
   return (
     <Box borderWidth="1px" borderColor={border} borderRadius="lg" bg={bg} data-testid={dataTestId}>
@@ -302,7 +302,7 @@ export const RichTextEditor = ({
           text-decoration: underline;
         }
         .rich-text-editor__content .ProseMirror a {
-          color: #5b21b6;
+          color: ${linkColor};
           text-decoration: underline;
           font-weight: 500;
         }
