@@ -32,7 +32,7 @@ const allowedAttributes: sanitizeHtmlLib.IOptions['allowedAttributes'] = {
 
 const allowedStyles: sanitizeHtmlLib.IOptions['allowedStyles'] = {
   span: {
-    'font-size': [/^(?:0|[1-9]\d*)(?:\.\d+)?rem$/],
+    'font-size': [/^(?:0\.(?:[5-9]\d*)|[12](?:\.\d+)?|3(?:\.0+)?)rem$/],
   },
 };
 
@@ -41,6 +41,7 @@ const linkTransform = sanitizeHtmlLib.simpleTransform('a', {
   rel: 'noopener noreferrer',
   target: '_blank',
 });
+const stripAnchorTransform = (): sanitizeHtmlLib.Tag => ({ tagName: 'span', attribs: {} });
 const extractPlainText = (html: string) =>
   html
     .replace(/<br\s*\/?>(?=\s|$)/gi, ' ')
@@ -90,7 +91,7 @@ export const sanitizeRichText = (dirty: string) => {
       a: (tagName, attribs) => {
         const safeHref = normalizeHref(attribs.href);
         if (!safeHref) {
-          return 'span';
+          return stripAnchorTransform();
         }
         return linkTransform(tagName, { ...attribs, href: safeHref });
       },

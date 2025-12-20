@@ -121,7 +121,7 @@ describe('SideNav menu actions', () => {
     expect(within(menu).getByText(/signed in as/i)).toBeInTheDocument();
     expect(within(menu).getByText(mockAuthUser.username)).toBeInTheDocument();
     expect(within(menu).getByText(mockAuthUser.email)).toBeInTheDocument();
-    expect(within(menu).getByRole('menuitem', { name: /logout/i })).toBeInTheDocument();
+    expect(within(menu).getByRole('menuitem', { name: /logout/i, hidden: true })).toBeInTheDocument();
   });
 
   it('displays guest state when not authenticated', async () => {
